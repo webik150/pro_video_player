@@ -31,17 +31,41 @@ analyzer:
     cancel_subscriptions: error
     exhaustive_cases: error
     cast_nullable_to_non_nullable: error
-    # Type Safety
+    # Async Safety - Missing await causes race conditions and lost errors
+    unawaited_futures: error
+    discarded_futures: error
+    use_build_context_synchronously: error
+    # Type Safety - Comparing/using incompatible types
+    unrelated_type_equality_checks: error
+    collection_methods_unrelated_type: error
+    hash_and_equals: error
     # Note: Both avoid_annotating_with_dynamic and avoid_dynamic_calls are warnings
     # (not errors) because JS interop with external libraries (HLS.js, DASH.js, browser APIs)
     # requires explicit dynamic annotations for event handlers and callback parameters
     avoid_annotating_with_dynamic: warning
     avoid_dynamic_calls: warning
+    # Control Flow - These mask exceptions or indicate bugs
+    control_flow_in_finally: error
+    throw_in_finally: error
+    empty_statements: error
+    literal_only_boolean_expressions: error
+    # Flutter-specific
+    no_logic_in_create_state: error
+    # Null Safety
+    avoid_returning_null_for_future: error
+    avoid_returning_null_for_void: error
     # Library Structure
     library_private_types_in_public_api: error
     library_prefixes: error
     library_names: error
     library_annotations: error
+    # Code Quality Warnings - Bad practices with occasional legitimate uses
+    avoid_catching_errors: warning
+    only_throw_errors: warning
+    parameter_assignments: warning
+    implicit_reopen: warning
+    avoid_slow_async_io: warning
+    test_types_in_equals: warning
     # Documentation
     public_member_api_docs: warning
     # Allow some flexibility

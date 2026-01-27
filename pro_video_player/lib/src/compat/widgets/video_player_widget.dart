@@ -26,17 +26,15 @@ class VideoPlayer extends StatelessWidget {
   final VideoPlayerController controller;
 
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: controller,
-      builder: (context, value, child) {
-        final playerId = controller.proController.playerId;
-        if (playerId == null || !value.isInitialized) {
-          return const SizedBox.shrink();
-        }
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: controller,
+    builder: (context, value, child) {
+      final playerId = controller.proController.playerId;
+      if (playerId == null || !value.isInitialized) {
+        return const SizedBox.shrink();
+      }
 
-        return ProVideoPlayerPlatform.instance.buildView(playerId);
-      },
-    );
-  }
+      return ProVideoPlayerPlatform.instance.buildView(playerId);
+    },
+  );
 }

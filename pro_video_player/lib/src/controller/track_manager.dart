@@ -4,6 +4,9 @@ import 'package:pro_video_player_platform_interface/pro_video_player_platform_in
 
 import 'manager_callbacks.dart';
 
+// Alias for cleaner code
+typedef _Logger = ProVideoPlayerLogger;
+
 /// Manages track selection (subtitle, audio, video quality) for the video player.
 ///
 /// This manager handles:
@@ -11,6 +14,7 @@ import 'manager_callbacks.dart';
 /// - Audio track selection
 /// - Video quality track selection for adaptive streams
 /// - Subtitle render mode configuration
+/// - Embedded subtitle extraction for Flutter render mode
 class TrackManager with ManagerCallbacks {
   /// Creates a track manager with dependency injection via callbacks.
   TrackManager({
@@ -20,7 +24,11 @@ class TrackManager with ManagerCallbacks {
     required this.getOptions,
     required this.platform,
     required this.ensureInitialized,
+    required this.getSource,
   });
+
+  /// Gets the current video source.
+  final VideoSource? Function() getSource;
 
   @override
   final VideoPlayerValue Function() getValue;
@@ -54,7 +62,18 @@ class TrackManager with ManagerCallbacks {
 
     await platform.setSubtitleTrack(getPlayerId()!, track);
     final value = getValue();
-    setValue(value.copyWith(selectedSubtitleTrack: track, clearSelectedSubtitle: track == null));
+    setValue(
+      value.copyWith(
+        selectedSubtitleTrack: track,
+        clearSelectedSubtitle: track == null,
+        clearEmbeddedSubtitleCues: true, // Clear old cues when track changes
+      ),
+    );
+
+    // Extract cues for embedded tracks in Flutter mode (auto defaults to flutter)
+    if (track != null) {
+      extractEmbeddedSubtitlesIfNeeded(track);
+    }
   }
 
   /// Sets the subtitle rendering mode at runtime.
@@ -77,7 +96,96 @@ class TrackManager with ManagerCallbacks {
 
     await platform.setSubtitleRenderMode(getPlayerId()!, mode);
     final value = getValue();
-    setValue(value.copyWith(currentSubtitleRenderMode: mode));
+    // Only clear cues when switching to native mode (auto and flutter both use Flutter rendering)
+    final shouldClearCues = mode == SubtitleRenderMode.native;
+    setValue(value.copyWith(currentSubtitleRenderMode: mode, clearEmbeddedSubtitleCues: shouldClearCues));
+
+    // Extract cues when switching to Flutter/auto mode with an embedded track selected
+    if (mode == SubtitleRenderMode.flutter || mode == SubtitleRenderMode.auto) {
+      final selectedTrack = getValue().selectedSubtitleTrack;
+      if (selectedTrack != null) {
+        extractEmbeddedSubtitlesIfNeeded(selectedTrack);
+      }
+    }
+  }
+
+  /// Extracts embedded subtitles for Flutter rendering if needed.
+  ///
+  /// Called when a subtitle track is selected (either by user or auto-selection).
+  /// Only extracts if the render mode is flutter or auto (which defaults to flutter).
+  void extractEmbeddedSubtitlesIfNeeded(SubtitleTrack track) {
+    if (track.isExternal) return; // External tracks don't need extraction
+
+    final renderMode = getValue().currentSubtitleRenderMode;
+    // Auto mode now defaults to flutter, so extract for both
+    if (renderMode == SubtitleRenderMode.flutter || renderMode == SubtitleRenderMode.auto) {
+      unawaited(_extractEmbeddedSubtitleCues(track));
+    }
+  }
+
+  /// Extracts embedded subtitle cues from HLS/DASH streams for Flutter rendering.
+  ///
+  /// This fetches all cues upfront so the SubtitleOverlay can render them
+  /// with custom styling instead of relying on native platform rendering.
+  Future<void> _extractEmbeddedSubtitleCues(SubtitleTrack track) async {
+    final source = getSource();
+    if (source == null) {
+      _Logger.log('Cannot extract embedded subtitles: no video source', tag: 'TrackManager');
+      return;
+    }
+
+    // Get the source URL
+    final sourceUrl = switch (source) {
+      NetworkVideoSource(:final url) => url,
+      _ => null,
+    };
+
+    if (sourceUrl == null) {
+      _Logger.log('Cannot extract embedded subtitles: source is not a network URL', tag: 'TrackManager');
+      return;
+    }
+
+    // Check if it's an HLS stream
+    if (!sourceUrl.contains('.m3u8')) {
+      _Logger.log('Cannot extract embedded subtitles: not an HLS stream', tag: 'TrackManager');
+      return;
+    }
+
+    try {
+      _Logger.log('Extracting embedded subtitles from HLS: $sourceUrl', tag: 'TrackManager');
+
+      final extractor = HlsSubtitleExtractor();
+      final hlsTracks = await extractor.listTracks(Uri.parse(sourceUrl));
+
+      if (hlsTracks.isEmpty) {
+        _Logger.log('No HLS subtitle tracks found', tag: 'TrackManager');
+        return;
+      }
+
+      // Match the track by index (track.id format is "0:index")
+      final parts = track.id.split(':');
+      final trackIndex = parts.length == 2 ? int.tryParse(parts[1]) : null;
+
+      if (trackIndex == null || trackIndex >= hlsTracks.length) {
+        // Try matching by language
+        final matchingTrack = hlsTracks.where((t) => t.language == track.language).firstOrNull;
+        if (matchingTrack != null) {
+          final cues = await extractor.extractFromTrack(Uri.parse(sourceUrl), matchingTrack);
+          _Logger.log('Extracted ${cues.length} cues for track ${track.label} (by language)', tag: 'TrackManager');
+          setValue(getValue().copyWith(embeddedSubtitleCues: cues));
+          return;
+        }
+        _Logger.log('Could not match HLS track for: ${track.id}', tag: 'TrackManager');
+        return;
+      }
+
+      final hlsTrack = hlsTracks[trackIndex];
+      final cues = await extractor.extractFromTrack(Uri.parse(sourceUrl), hlsTrack);
+      _Logger.log('Extracted ${cues.length} cues for track ${track.label}', tag: 'TrackManager');
+      setValue(getValue().copyWith(embeddedSubtitleCues: cues));
+    } catch (e) {
+      _Logger.error('Failed to extract embedded subtitles', tag: 'TrackManager', error: e);
+    }
   }
 
   /// Sets the active audio track.

@@ -371,7 +371,7 @@ class WebVideoPlayer {
   ///
   /// - native: Browser's TextTrack API renders subtitles
   /// - flutter: Subtitle text is extracted and streamed to Flutter for rendering
-  /// - auto: Defaults to native rendering
+  /// - auto: Defaults to Flutter rendering
   void setSubtitleRenderMode(String mode) {
     _getSubtitleManager().setRenderMode(mode);
   }
@@ -385,8 +385,9 @@ class WebVideoPlayer {
       _emitEvent(SubtitleTracksChangedEvent(tracks));
     }
 
-    // Set up cue change listeners if in flutter render mode
-    if (options.subtitleRenderMode == SubtitleRenderMode.flutter) {
+    // Set up cue change listeners if in flutter render mode (auto defaults to flutter)
+    final renderMode = options.subtitleRenderMode;
+    if (renderMode == SubtitleRenderMode.flutter || renderMode == SubtitleRenderMode.auto) {
       subtitleManager.setRenderMode('flutter');
     }
   }

@@ -4,6 +4,7 @@
 ///
 /// To run: flutter drive --driver=test_driver/integration_test.dart \
 ///         --target=integration_test/memory_leak_detection_example.dart
+library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +22,7 @@ void main() {
 
   testWidgets('Memory leak detection - basic example', (tester) async {
     final fixture = E2ETestFixture();
-    final memTracker = E2EMemoryTracker(leakThresholdMB: 30.0);
+    final memTracker = E2EMemoryTracker(leakThresholdMB: 30);
 
     // Start app
     app.main();
@@ -41,7 +42,7 @@ void main() {
     await nav.goHome(tester);
     await tester.pump(E2EDelays.navigationLong);
     await memTracker.captureSnapshot('Back to home after Player Features');
-    fixture.endSection('Player Features');
+    await fixture.endSection('Player Features');
 
     // Test section 2: Navigate to another screen and back
     fixture.startSection('Advanced Features');
@@ -52,7 +53,7 @@ void main() {
     await nav.goHome(tester);
     await tester.pump(E2EDelays.navigationLong);
     await memTracker.captureSnapshot('Back to home after Advanced Features');
-    fixture.endSection('Advanced Features');
+    await fixture.endSection('Advanced Features');
 
     // Test section 3: Repeat same screen to check for cumulative leaks
     fixture.startSection('Player Features (2nd time)');
@@ -63,7 +64,7 @@ void main() {
     await nav.goHome(tester);
     await tester.pump(E2EDelays.navigationLong);
     await memTracker.captureSnapshot('Back to home after Player Features (2nd time)');
-    fixture.endSection('Player Features (2nd time)');
+    await fixture.endSection('Player Features (2nd time)');
 
     // Print memory report
     memTracker.printReport();
@@ -81,7 +82,7 @@ void main() {
 
   testWidgets('Memory leak detection - stress test multiple screens', (tester) async {
     final fixture = E2ETestFixture();
-    final memTracker = E2EMemoryTracker(leakThresholdMB: 50.0);
+    final memTracker = E2EMemoryTracker();
 
     // Start app
     app.main();
@@ -112,7 +113,7 @@ void main() {
       await tester.pump(E2EDelays.navigationLong);
       await memTracker.captureSnapshot('Back to home after $title');
 
-      fixture.endSection(title);
+      await fixture.endSection(title);
     }
 
     // Print report

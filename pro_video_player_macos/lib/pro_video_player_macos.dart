@@ -7,6 +7,14 @@ import 'package:pro_video_player_platform_interface/pro_video_player_platform_in
 /// The macOS implementation of [ProVideoPlayerPlatform].
 ///
 /// This class uses AVPlayer for video playback on macOS.
+///
+/// Events are delivered through a hybrid system:
+/// - High-frequency events (position, buffering, state) come via EventChannel
+/// - Low-frequency events (tracks, errors, metadata) come via Pigeon @FlutterApi
+///
+/// Both event sources are forwarded to the base class's event stream, ensuring
+/// all events are received by the controller regardless of which mechanism
+/// delivers them.
 class ProVideoPlayerMacOS extends PigeonMethodChannelBase {
   /// Constructs a ProVideoPlayerMacOS.
   ProVideoPlayerMacOS() : super('pro_video_player_macos');
@@ -16,18 +24,13 @@ class ProVideoPlayerMacOS extends PigeonMethodChannelBase {
     ProVideoPlayerPlatform.instance = ProVideoPlayerMacOS();
   }
 
-  // Event stream controllers (one per player)
-  final Map<int, Stream<VideoPlayerEvent>> _eventStreams = {};
+  // EventChannel instances (one per player) - cleaned up on dispose
   final Map<int, EventChannel> _eventChannels = {};
+  // EventChannel subscriptions (one per player) - cancelled on dispose
+  final Map<int, StreamSubscription<dynamic>> _eventSubscriptions = {};
 
-  @override
-  Stream<VideoPlayerEvent> events(int playerId) {
-    final stream = _eventStreams[playerId];
-    if (stream == null) {
-      throw StateError('Player $playerId has not been created');
-    }
-    return stream;
-  }
+  // Note: We do NOT override events() - the base class's Pigeon-based stream
+  // is used. EventChannel events are forwarded to that stream via addEventChannelEvent().
 
   @override
   Future<int> create({required VideoSource source, VideoPlayerOptions options = const VideoPlayerOptions()}) async {
@@ -38,30 +41,35 @@ class ProVideoPlayerMacOS extends PigeonMethodChannelBase {
 
   @override
   Future<void> dispose(int playerId) async {
+    await _eventSubscriptions[playerId]?.cancel();
+    _eventSubscriptions.remove(playerId);
     _eventChannels.remove(playerId);
-    _eventStreams.remove(playerId);
     await super.dispose(playerId);
   }
 
   /// Sets up the event channel for a player.
+  ///
+  /// EventChannel events are forwarded to the base class's Pigeon-based event stream,
+  /// ensuring both high-frequency (EventChannel) and low-frequency (Pigeon) events
+  /// are delivered to the controller through a single unified stream.
   void _setupEventChannel(int playerId) {
     final eventChannel = EventChannel('dev.pro_video_player.$channelPrefix/events/$playerId');
     _eventChannels[playerId] = eventChannel;
 
-    _eventStreams[playerId] = eventChannel.receiveBroadcastStream().transform(
-      StreamTransformer<dynamic, VideoPlayerEvent>.fromHandlers(
-        handleData: (event, sink) {
-          if (event is Map<dynamic, dynamic>) {
-            final parsed = EventParser.parseEvent(event);
-            if (parsed != null) {
-              sink.add(parsed);
-            }
+    // Forward EventChannel events to the base class's stream
+    _eventSubscriptions[playerId] = eventChannel.receiveBroadcastStream().listen(
+      (event) {
+        if (event is Map<dynamic, dynamic>) {
+          final parsed = EventParser.parseEvent(event);
+          if (parsed != null) {
+            // Forward to base class's Pigeon-based event stream
+            addEventChannelEvent(playerId, parsed);
           }
-        },
-        handleError: (error, stackTrace, sink) {
-          sink.add(ErrorEvent(error.toString()));
-        },
-      ),
+        }
+      },
+      onError: (Object error) {
+        addEventChannelEvent(playerId, ErrorEvent(error.toString()));
+      },
     );
   }
 

@@ -4,7 +4,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:pro_video_player/pro_video_player.dart';
-import 'package:pro_video_player_platform_interface/pro_video_player_platform_interface.dart';
 
 import '../constants/video_constants.dart';
 import '../widgets/responsive_video_layout.dart';
@@ -27,7 +26,7 @@ class _PlatformDemoScreenState extends State<PlatformDemoScreen> {
     super.initState();
 
     // Enable verbose logging to debug initialization timing
-    ProVideoPlayerLogger.setVerboseLogging(enabled: true);
+    unawaited(ProVideoPlayerLogger.setVerboseLogging(enabled: true));
 
     _controller = ProVideoPlayerController();
     _detectPlatform();

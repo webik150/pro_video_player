@@ -15,9 +15,9 @@ void main() {
       manager = PlaybackControlManager(emitEvent: fixture.emitEvent, videoElement: fixture.videoElement);
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('playback controls', () {

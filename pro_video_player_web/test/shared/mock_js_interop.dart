@@ -743,7 +743,7 @@ class MockWakeLockSentinel {
 
   /// Disposes the controller.
   void dispose() {
-    _releaseController.close();
+    unawaited(_releaseController.close());
   }
 }
 

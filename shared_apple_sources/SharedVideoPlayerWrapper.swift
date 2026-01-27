@@ -122,6 +122,10 @@ open class SharedVideoPlayerWrapper: NSObject {
         sharedPlayer.setAudioTrack(track)
     }
 
+    public func setSubtitleRenderMode(_ mode: String) {
+        sharedPlayer.setSubtitleRenderMode(mode)
+    }
+
     // MARK: - External Subtitles
 
     public func addExternalSubtitle(

@@ -453,6 +453,183 @@ class ProVideoPlayerPlugin: FlutterPlugin, ActivityAware, Application.ActivityLi
         callback(Result.success(true))
     }
 
+    // MARK: - Codec Compatibility
+
+    override fun checkCodecSupport(codec: CodecInfoMessage, callback: (Result<CodecCompatibilityMessage>) -> Unit) {
+        verboseLog("checkCodecSupport() called for codec: ${codec.name} (${codec.fourcc})", TAG)
+        try {
+            val result = checkCodecSupportInternal(codec)
+            callback(Result.success(result))
+        } catch (e: Exception) {
+            callback(Result.failure(FlutterError("CODEC_ERROR", e.message, null)))
+        }
+    }
+
+    override fun checkCodecsSupport(codecs: List<CodecInfoMessage?>, callback: (Result<List<CodecCompatibilityMessage?>>) -> Unit) {
+        verboseLog("checkCodecsSupport() called for ${codecs.size} codecs", TAG)
+        try {
+            val results = codecs.map { codec ->
+                codec?.let { checkCodecSupportInternal(it) }
+            }
+            callback(Result.success(results))
+        } catch (e: Exception) {
+            callback(Result.failure(FlutterError("CODEC_ERROR", e.message, null)))
+        }
+    }
+
+    override fun getSupportedCodecs(callback: (Result<List<String?>>) -> Unit) {
+        verboseLog("getSupportedCodecs() called", TAG)
+        try {
+            val codecsToCheck = listOf(
+                // Video codecs
+                Triple("H.264", "video/avc", "avc1"),
+                Triple("HEVC", "video/hevc", "hvc1"),
+                Triple("VP8", "video/x-vnd.on2.vp8", "vp08"),
+                Triple("VP9", "video/x-vnd.on2.vp9", "vp09"),
+                Triple("AV1", "video/av01", "av01"),
+                Triple("MPEG-4", "video/mp4v-es", "mp4v"),
+                // Audio codecs
+                Triple("AAC", "audio/mp4a-latm", "mp4a"),
+                Triple("MP3", "audio/mpeg", ".mp3"),
+                Triple("Opus", "audio/opus", "opus"),
+                Triple("Vorbis", "audio/vorbis", "vorb"),
+                Triple("FLAC", "audio/flac", "flac"),
+                Triple("AC-3", "audio/ac3", "ac-3"),
+                Triple("E-AC-3", "audio/eac3", "ec-3")
+            )
+
+            val supportedCodecs = codecsToCheck
+                .filter { (_, mimeType, _) -> isCodecSupportedByMimeType(mimeType) }
+                .map { (name, _, _) -> name }
+
+            verboseLog("Supported codecs: ${supportedCodecs.joinToString(", ")}", TAG)
+            callback(Result.success(supportedCodecs))
+        } catch (e: Exception) {
+            callback(Result.failure(FlutterError("CODEC_ERROR", e.message, null)))
+        }
+    }
+
+    private fun checkCodecSupportInternal(codec: CodecInfoMessage): CodecCompatibilityMessage {
+        val mimeType = buildMimeType(codec)
+        if (mimeType == null) {
+            return CodecCompatibilityMessage(
+                codec = codec,
+                supportLevel = CodecSupportLevelEnum.UNKNOWN,
+                message = "Unable to determine MIME type for codec ${codec.fourcc}",
+                minimumOsVersion = null,
+                alternativeCodecs = null
+            )
+        }
+
+        val isSupported = isCodecSupportedByMimeType(mimeType)
+
+        val supportLevel: CodecSupportLevelEnum
+        var message: String?
+        var alternativeCodecs: List<String?>? = null
+
+        if (isSupported) {
+            supportLevel = CodecSupportLevelEnum.SUPPORTED
+            message = "MediaCodecList.findDecoderForFormat found decoder"
+        } else {
+            supportLevel = CodecSupportLevelEnum.NOT_SUPPORTED
+            message = "No decoder available for this codec"
+            alternativeCodecs = suggestAlternatives(codec)
+        }
+
+        val minimumSdkVersion = getMinimumSdkVersion(codec)
+
+        return CodecCompatibilityMessage(
+            codec = CodecInfoMessage(
+                fourcc = codec.fourcc,
+                name = codec.name,
+                codecString = codec.codecString,
+                mimeType = mimeType
+            ),
+            supportLevel = supportLevel,
+            message = message,
+            minimumOsVersion = minimumSdkVersion,
+            alternativeCodecs = alternativeCodecs
+        )
+    }
+
+    private fun buildMimeType(codec: CodecInfoMessage): String? {
+        // If codec already has mimeType, use it
+        if (!codec.mimeType.isNullOrEmpty()) {
+            // Extract just the MIME type from complex strings like "video/mp4; codecs=..."
+            val mimeOnly = codec.mimeType!!.split(";").firstOrNull()?.trim()
+            if (mimeOnly?.contains("/") == true) return mimeOnly
+        }
+
+        val fourcc = codec.fourcc.lowercase()
+
+        // Video codecs
+        return when (fourcc) {
+            "avc1", "avc3" -> "video/avc"
+            "hvc1", "hev1" -> "video/hevc"
+            "vp08" -> "video/x-vnd.on2.vp8"
+            "vp09" -> "video/x-vnd.on2.vp9"
+            "av01" -> "video/av01"
+            "mp4v" -> "video/mp4v-es"
+            // Audio codecs
+            "mp4a" -> "audio/mp4a-latm"
+            "ac-3" -> "audio/ac3"
+            "ec-3" -> "audio/eac3"
+            "opus" -> "audio/opus"
+            "flac" -> "audio/flac"
+            "alac" -> "audio/alac"
+            "vorb" -> "audio/vorbis"
+            "mp3 ", ".mp3" -> "audio/mpeg"
+            else -> null
+        }
+    }
+
+    private fun isCodecSupportedByMimeType(mimeType: String): Boolean {
+        return try {
+            val format = android.media.MediaFormat.createVideoFormat(mimeType, 1920, 1080)
+            val codecList = android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS)
+            val decoderName = codecList.findDecoderForFormat(format)
+            !decoderName.isNullOrEmpty()
+        } catch (e: Exception) {
+            // For audio or if video format fails, try audio format
+            try {
+                val format = android.media.MediaFormat.createAudioFormat(mimeType, 48000, 2)
+                val codecList = android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS)
+                val decoderName = codecList.findDecoderForFormat(format)
+                !decoderName.isNullOrEmpty()
+            } catch (e2: Exception) {
+                false
+            }
+        }
+    }
+
+    private fun suggestAlternatives(codec: CodecInfoMessage): List<String?> {
+        val fourcc = codec.fourcc.lowercase()
+
+        // Video codec alternatives
+        return when (fourcc) {
+            "hvc1", "hev1" -> listOf("H.264", "VP9")
+            "av01" -> listOf("H.264", "VP9", "HEVC")
+            "vp09" -> listOf("H.264", "VP8")
+            "vp08" -> listOf("H.264")
+            // Audio codec alternatives
+            "ac-3", "ec-3" -> listOf("AAC", "MP3")
+            "alac" -> listOf("AAC", "FLAC")
+            "opus" -> listOf("AAC", "Vorbis")
+            else -> emptyList()
+        }
+    }
+
+    private fun getMinimumSdkVersion(codec: CodecInfoMessage): String? {
+        val fourcc = codec.fourcc.lowercase()
+
+        return when (fourcc) {
+            "av01" -> "29" // AV1 requires API 29+
+            "hvc1", "hev1" -> "21" // HEVC requires API 21+
+            "vp09" -> "21" // VP9 requires API 21+
+            else -> null
+        }
+    }
+
     override fun setLooping(playerId: Long, looping: Boolean, callback: (Result<Unit>) -> Unit) {
         delegatePlayerMethod(playerId, { it.setLooping(looping) }, callback)
     }
@@ -973,8 +1150,20 @@ class ProVideoPlayerPlugin: FlutterPlugin, ActivityAware, Application.ActivityLi
         options.maxBitrate?.let { map["maxBitrate"] = it.toInt() }
         options.minBitrate?.let { map["minBitrate"] = it.toInt() }
         options.preferredAudioRendition?.let { map["preferredAudioRendition"] = it }
+        // Subtitle options
+        options.subtitleRenderMode?.let { map["subtitleRenderMode"] = convertSubtitleRenderModeToString(it) }
+        options.subtitlesEnabled?.let { map["subtitlesEnabled"] = it }
+        options.showSubtitlesByDefault?.let { map["showSubtitlesByDefault"] = it }
 
         return map
+    }
+
+    private fun convertSubtitleRenderModeToString(mode: SubtitleRenderModeEnum): String {
+        return when (mode) {
+            SubtitleRenderModeEnum.AUTO -> "auto"
+            SubtitleRenderModeEnum.NATIVE -> "native"
+            SubtitleRenderModeEnum.FLUTTER -> "flutter"
+        }
     }
 
     private fun convertSubtitleTrackToMap(track: SubtitleTrackMessage): Map<String, Any> {

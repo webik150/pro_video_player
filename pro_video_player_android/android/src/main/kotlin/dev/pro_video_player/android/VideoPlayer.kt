@@ -88,6 +88,10 @@ class VideoPlayer(
     private var renderEmbeddedSubtitlesInFlutter: Boolean = false
     private var subtitleRenderMode: String = "auto"
 
+    /// Effective render mode - "auto" defaults to "flutter"
+    private val effectiveSubtitleRenderMode: String
+        get() = if (subtitleRenderMode == "auto") "flutter" else subtitleRenderMode
+
     // Store initial options for later use (e.g., scaling mode)
     private var initialOptions: Map<String, Any> = options
 
@@ -418,10 +422,15 @@ class VideoPlayer(
         preventScreenSleep = options["preventScreenSleep"] as? Boolean ?: true
         renderEmbeddedSubtitlesInFlutter = options["renderEmbeddedSubtitlesInFlutter"] as? Boolean ?: false
 
+        // Read subtitleRenderMode from options
+        subtitleRenderMode = options["subtitleRenderMode"] as? String ?: "auto"
+
         // Support backward compatibility: if deprecated flag is true, override subtitle render mode
         if (renderEmbeddedSubtitlesInFlutter) {
             subtitleRenderMode = "flutter"
         }
+
+        verboseLog("Initialized with subtitleRenderMode: $subtitleRenderMode", TAG)
 
         val uri: Uri? = when (type) {
             "network" -> {
@@ -569,7 +578,7 @@ class VideoPlayer(
 
                     override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
                         // Only send embedded subtitle cues if Flutter rendering is enabled
-                        if (subtitleRenderMode != "flutter") return
+                        if (effectiveSubtitleRenderMode != "flutter") return
 
                         // Extract text from all cues
                         val combinedText = cueGroup.cues.mapNotNull { cue ->
@@ -1037,6 +1046,11 @@ class VideoPlayer(
                         .buildUpon()
                         .setOverrideForType(override)
                         .build()
+
+                    // Ensure SubtitleView stays hidden in Flutter mode after track selection
+                    if (effectiveSubtitleRenderMode == "flutter") {
+                        playerView?.subtitleView?.visibility = View.GONE
+                    }
                 }
                 break
             }
@@ -1285,6 +1299,12 @@ class VideoPlayer(
 
         // Apply scaling mode from options
         applyScalingMode(view)
+
+        // Apply subtitle render mode - hide native subtitles if flutter mode is active
+        if (effectiveSubtitleRenderMode == "flutter") {
+            view.subtitleView?.visibility = View.GONE
+            verboseLog("Native subtitle view hidden (Flutter mode)", TAG)
+        }
     }
 
     /**
@@ -1552,6 +1572,11 @@ class VideoPlayer(
                                 .setOverrideForType(override)
                                 .build()
 
+                            // Ensure SubtitleView stays hidden in Flutter mode after track selection
+                            if (effectiveSubtitleRenderMode == "flutter") {
+                                playerView?.subtitleView?.visibility = View.GONE
+                            }
+
                             sendEvent(mapOf("type" to "selectedSubtitleChanged", "track" to track))
                         } else {
                             verboseLog("setSubtitleTrack: Group type or track index invalid. Type=${group.type}, trackIndex=$trackIndex, length=${group.length}", TAG)
@@ -1582,15 +1607,16 @@ class VideoPlayer(
      *
      * - native: ExoPlayer renders subtitles in SubtitleView
      * - flutter: Subtitle text is extracted and streamed to Flutter for rendering
-     * - auto: Defaults to native rendering
+     * - auto: Defaults to Flutter rendering
      *
      * @param mode The render mode ("native", "flutter", or "auto")
      */
     fun setSubtitleRenderMode(mode: String) {
         subtitleRenderMode = mode
 
-        // Update subtitle view visibility
-        val shouldUseFlutterRendering = (mode == "flutter")
+        // Update subtitle view visibility - auto defaults to flutter
+        val effectiveMode = if (mode == "auto") "flutter" else mode
+        val shouldUseFlutterRendering = (effectiveMode == "flutter")
         playerView?.subtitleView?.visibility = if (shouldUseFlutterRendering) View.GONE else View.VISIBLE
     }
 

@@ -16,9 +16,9 @@ void main() {
       manager = MetadataManager(emitEvent: fixture.emitEvent, videoElement: fixture.videoElement);
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('basic metadata extraction', () {

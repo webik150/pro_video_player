@@ -2,6 +2,8 @@
 ///
 /// These tests verify that the compatibility layer types match the
 /// video_player API exactly.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pro_video_player/video_player_compat.dart';
@@ -115,7 +117,7 @@ void main() {
     });
 
     test('aspectRatio returns 1.0 for zero height', () {
-      const value = VideoPlayerValue(duration: Duration(seconds: 60), size: Size.zero);
+      const value = VideoPlayerValue(duration: Duration(seconds: 60));
 
       expect(value.aspectRatio, equals(1.0));
     });
@@ -137,7 +139,7 @@ void main() {
     });
 
     test('isCompleted is false when duration is zero', () {
-      const value = VideoPlayerValue(duration: Duration.zero, position: Duration.zero, isInitialized: true);
+      const value = VideoPlayerValue(duration: Duration.zero, isInitialized: true);
 
       expect(value.isCompleted, isFalse);
     });
@@ -183,7 +185,7 @@ void main() {
     test('equality works correctly', () {
       const options1 = VideoPlayerOptions(mixWithOthers: true);
       const options2 = VideoPlayerOptions(mixWithOthers: true);
-      const options3 = VideoPlayerOptions(mixWithOthers: false);
+      const options3 = VideoPlayerOptions();
 
       expect(options1, equals(options2));
       expect(options1, isNot(equals(options3)));

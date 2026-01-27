@@ -178,7 +178,10 @@ VideoPlayerOptionsMessage::VideoPlayerOptionsMessage(
   bool allow_background_playback,
   bool mix_with_others,
   bool allow_pip,
-  bool auto_enter_pip_on_background)
+  bool auto_enter_pip_on_background,
+  const SubtitleRenderModeEnum* subtitle_render_mode,
+  const bool* subtitles_enabled,
+  const bool* show_subtitles_by_default)
  : auto_play_(auto_play),
     looping_(looping),
     volume_(volume),
@@ -194,7 +197,10 @@ VideoPlayerOptionsMessage::VideoPlayerOptionsMessage(
     allow_background_playback_(allow_background_playback),
     mix_with_others_(mix_with_others),
     allow_pip_(allow_pip),
-    auto_enter_pip_on_background_(auto_enter_pip_on_background) {}
+    auto_enter_pip_on_background_(auto_enter_pip_on_background),
+    subtitle_render_mode_(subtitle_render_mode ? std::optional<SubtitleRenderModeEnum>(*subtitle_render_mode) : std::nullopt),
+    subtitles_enabled_(subtitles_enabled ? std::optional<bool>(*subtitles_enabled) : std::nullopt),
+    show_subtitles_by_default_(show_subtitles_by_default ? std::optional<bool>(*show_subtitles_by_default) : std::nullopt) {}
 
 bool VideoPlayerOptionsMessage::auto_play() const {
   return auto_play_;
@@ -372,9 +378,48 @@ void VideoPlayerOptionsMessage::set_auto_enter_pip_on_background(bool value_arg)
 }
 
 
+const SubtitleRenderModeEnum* VideoPlayerOptionsMessage::subtitle_render_mode() const {
+  return subtitle_render_mode_ ? &(*subtitle_render_mode_) : nullptr;
+}
+
+void VideoPlayerOptionsMessage::set_subtitle_render_mode(const SubtitleRenderModeEnum* value_arg) {
+  subtitle_render_mode_ = value_arg ? std::optional<SubtitleRenderModeEnum>(*value_arg) : std::nullopt;
+}
+
+void VideoPlayerOptionsMessage::set_subtitle_render_mode(const SubtitleRenderModeEnum& value_arg) {
+  subtitle_render_mode_ = value_arg;
+}
+
+
+const bool* VideoPlayerOptionsMessage::subtitles_enabled() const {
+  return subtitles_enabled_ ? &(*subtitles_enabled_) : nullptr;
+}
+
+void VideoPlayerOptionsMessage::set_subtitles_enabled(const bool* value_arg) {
+  subtitles_enabled_ = value_arg ? std::optional<bool>(*value_arg) : std::nullopt;
+}
+
+void VideoPlayerOptionsMessage::set_subtitles_enabled(bool value_arg) {
+  subtitles_enabled_ = value_arg;
+}
+
+
+const bool* VideoPlayerOptionsMessage::show_subtitles_by_default() const {
+  return show_subtitles_by_default_ ? &(*show_subtitles_by_default_) : nullptr;
+}
+
+void VideoPlayerOptionsMessage::set_show_subtitles_by_default(const bool* value_arg) {
+  show_subtitles_by_default_ = value_arg ? std::optional<bool>(*value_arg) : std::nullopt;
+}
+
+void VideoPlayerOptionsMessage::set_show_subtitles_by_default(bool value_arg) {
+  show_subtitles_by_default_ = value_arg;
+}
+
+
 EncodableList VideoPlayerOptionsMessage::ToEncodableList() const {
   EncodableList list;
-  list.reserve(16);
+  list.reserve(19);
   list.push_back(EncodableValue(auto_play_));
   list.push_back(EncodableValue(looping_));
   list.push_back(EncodableValue(volume_));
@@ -391,6 +436,9 @@ EncodableList VideoPlayerOptionsMessage::ToEncodableList() const {
   list.push_back(EncodableValue(mix_with_others_));
   list.push_back(EncodableValue(allow_pip_));
   list.push_back(EncodableValue(auto_enter_pip_on_background_));
+  list.push_back(subtitle_render_mode_ ? CustomEncodableValue(*subtitle_render_mode_) : EncodableValue());
+  list.push_back(subtitles_enabled_ ? EncodableValue(*subtitles_enabled_) : EncodableValue());
+  list.push_back(show_subtitles_by_default_ ? EncodableValue(*show_subtitles_by_default_) : EncodableValue());
   return list;
 }
 
@@ -435,6 +483,18 @@ VideoPlayerOptionsMessage VideoPlayerOptionsMessage::FromEncodableList(const Enc
   auto& encodable_preferred_audio_rendition = list[11];
   if (!encodable_preferred_audio_rendition.IsNull()) {
     decoded.set_preferred_audio_rendition(std::get<std::string>(encodable_preferred_audio_rendition));
+  }
+  auto& encodable_subtitle_render_mode = list[16];
+  if (!encodable_subtitle_render_mode.IsNull()) {
+    decoded.set_subtitle_render_mode(std::any_cast<const SubtitleRenderModeEnum&>(std::get<CustomEncodableValue>(encodable_subtitle_render_mode)));
+  }
+  auto& encodable_subtitles_enabled = list[17];
+  if (!encodable_subtitles_enabled.IsNull()) {
+    decoded.set_subtitles_enabled(std::get<bool>(encodable_subtitles_enabled));
+  }
+  auto& encodable_show_subtitles_by_default = list[18];
+  if (!encodable_show_subtitles_by_default.IsNull()) {
+    decoded.set_show_subtitles_by_default(std::get<bool>(encodable_show_subtitles_by_default));
   }
   return decoded;
 }
@@ -1659,6 +1719,216 @@ ExternalSubtitleTrackMessage ExternalSubtitleTrackMessage::FromEncodableList(con
   return decoded;
 }
 
+// CodecInfoMessage
+
+CodecInfoMessage::CodecInfoMessage(
+  const std::string& fourcc,
+  const std::string& name)
+ : fourcc_(fourcc),
+    name_(name) {}
+
+CodecInfoMessage::CodecInfoMessage(
+  const std::string& fourcc,
+  const std::string& name,
+  const std::string* codec_string,
+  const std::string* mime_type)
+ : fourcc_(fourcc),
+    name_(name),
+    codec_string_(codec_string ? std::optional<std::string>(*codec_string) : std::nullopt),
+    mime_type_(mime_type ? std::optional<std::string>(*mime_type) : std::nullopt) {}
+
+const std::string& CodecInfoMessage::fourcc() const {
+  return fourcc_;
+}
+
+void CodecInfoMessage::set_fourcc(std::string_view value_arg) {
+  fourcc_ = value_arg;
+}
+
+
+const std::string& CodecInfoMessage::name() const {
+  return name_;
+}
+
+void CodecInfoMessage::set_name(std::string_view value_arg) {
+  name_ = value_arg;
+}
+
+
+const std::string* CodecInfoMessage::codec_string() const {
+  return codec_string_ ? &(*codec_string_) : nullptr;
+}
+
+void CodecInfoMessage::set_codec_string(const std::string_view* value_arg) {
+  codec_string_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void CodecInfoMessage::set_codec_string(std::string_view value_arg) {
+  codec_string_ = value_arg;
+}
+
+
+const std::string* CodecInfoMessage::mime_type() const {
+  return mime_type_ ? &(*mime_type_) : nullptr;
+}
+
+void CodecInfoMessage::set_mime_type(const std::string_view* value_arg) {
+  mime_type_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void CodecInfoMessage::set_mime_type(std::string_view value_arg) {
+  mime_type_ = value_arg;
+}
+
+
+EncodableList CodecInfoMessage::ToEncodableList() const {
+  EncodableList list;
+  list.reserve(4);
+  list.push_back(EncodableValue(fourcc_));
+  list.push_back(EncodableValue(name_));
+  list.push_back(codec_string_ ? EncodableValue(*codec_string_) : EncodableValue());
+  list.push_back(mime_type_ ? EncodableValue(*mime_type_) : EncodableValue());
+  return list;
+}
+
+CodecInfoMessage CodecInfoMessage::FromEncodableList(const EncodableList& list) {
+  CodecInfoMessage decoded(
+    std::get<std::string>(list[0]),
+    std::get<std::string>(list[1]));
+  auto& encodable_codec_string = list[2];
+  if (!encodable_codec_string.IsNull()) {
+    decoded.set_codec_string(std::get<std::string>(encodable_codec_string));
+  }
+  auto& encodable_mime_type = list[3];
+  if (!encodable_mime_type.IsNull()) {
+    decoded.set_mime_type(std::get<std::string>(encodable_mime_type));
+  }
+  return decoded;
+}
+
+// CodecCompatibilityMessage
+
+CodecCompatibilityMessage::CodecCompatibilityMessage(
+  const CodecInfoMessage& codec,
+  const CodecSupportLevelEnum& support_level)
+ : codec_(std::make_unique<CodecInfoMessage>(codec)),
+    support_level_(support_level) {}
+
+CodecCompatibilityMessage::CodecCompatibilityMessage(
+  const CodecInfoMessage& codec,
+  const CodecSupportLevelEnum& support_level,
+  const std::string* message,
+  const std::string* minimum_os_version,
+  const EncodableList* alternative_codecs)
+ : codec_(std::make_unique<CodecInfoMessage>(codec)),
+    support_level_(support_level),
+    message_(message ? std::optional<std::string>(*message) : std::nullopt),
+    minimum_os_version_(minimum_os_version ? std::optional<std::string>(*minimum_os_version) : std::nullopt),
+    alternative_codecs_(alternative_codecs ? std::optional<EncodableList>(*alternative_codecs) : std::nullopt) {}
+
+CodecCompatibilityMessage::CodecCompatibilityMessage(const CodecCompatibilityMessage& other)
+ : codec_(std::make_unique<CodecInfoMessage>(*other.codec_)),
+    support_level_(other.support_level_),
+    message_(other.message_ ? std::optional<std::string>(*other.message_) : std::nullopt),
+    minimum_os_version_(other.minimum_os_version_ ? std::optional<std::string>(*other.minimum_os_version_) : std::nullopt),
+    alternative_codecs_(other.alternative_codecs_ ? std::optional<EncodableList>(*other.alternative_codecs_) : std::nullopt) {}
+
+CodecCompatibilityMessage& CodecCompatibilityMessage::operator=(const CodecCompatibilityMessage& other) {
+  codec_ = std::make_unique<CodecInfoMessage>(*other.codec_);
+  support_level_ = other.support_level_;
+  message_ = other.message_;
+  minimum_os_version_ = other.minimum_os_version_;
+  alternative_codecs_ = other.alternative_codecs_;
+  return *this;
+}
+
+const CodecInfoMessage& CodecCompatibilityMessage::codec() const {
+  return *codec_;
+}
+
+void CodecCompatibilityMessage::set_codec(const CodecInfoMessage& value_arg) {
+  codec_ = std::make_unique<CodecInfoMessage>(value_arg);
+}
+
+
+const CodecSupportLevelEnum& CodecCompatibilityMessage::support_level() const {
+  return support_level_;
+}
+
+void CodecCompatibilityMessage::set_support_level(const CodecSupportLevelEnum& value_arg) {
+  support_level_ = value_arg;
+}
+
+
+const std::string* CodecCompatibilityMessage::message() const {
+  return message_ ? &(*message_) : nullptr;
+}
+
+void CodecCompatibilityMessage::set_message(const std::string_view* value_arg) {
+  message_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void CodecCompatibilityMessage::set_message(std::string_view value_arg) {
+  message_ = value_arg;
+}
+
+
+const std::string* CodecCompatibilityMessage::minimum_os_version() const {
+  return minimum_os_version_ ? &(*minimum_os_version_) : nullptr;
+}
+
+void CodecCompatibilityMessage::set_minimum_os_version(const std::string_view* value_arg) {
+  minimum_os_version_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void CodecCompatibilityMessage::set_minimum_os_version(std::string_view value_arg) {
+  minimum_os_version_ = value_arg;
+}
+
+
+const EncodableList* CodecCompatibilityMessage::alternative_codecs() const {
+  return alternative_codecs_ ? &(*alternative_codecs_) : nullptr;
+}
+
+void CodecCompatibilityMessage::set_alternative_codecs(const EncodableList* value_arg) {
+  alternative_codecs_ = value_arg ? std::optional<EncodableList>(*value_arg) : std::nullopt;
+}
+
+void CodecCompatibilityMessage::set_alternative_codecs(const EncodableList& value_arg) {
+  alternative_codecs_ = value_arg;
+}
+
+
+EncodableList CodecCompatibilityMessage::ToEncodableList() const {
+  EncodableList list;
+  list.reserve(5);
+  list.push_back(CustomEncodableValue(*codec_));
+  list.push_back(CustomEncodableValue(support_level_));
+  list.push_back(message_ ? EncodableValue(*message_) : EncodableValue());
+  list.push_back(minimum_os_version_ ? EncodableValue(*minimum_os_version_) : EncodableValue());
+  list.push_back(alternative_codecs_ ? EncodableValue(*alternative_codecs_) : EncodableValue());
+  return list;
+}
+
+CodecCompatibilityMessage CodecCompatibilityMessage::FromEncodableList(const EncodableList& list) {
+  CodecCompatibilityMessage decoded(
+    std::any_cast<const CodecInfoMessage&>(std::get<CustomEncodableValue>(list[0])),
+    std::any_cast<const CodecSupportLevelEnum&>(std::get<CustomEncodableValue>(list[1])));
+  auto& encodable_message = list[2];
+  if (!encodable_message.IsNull()) {
+    decoded.set_message(std::get<std::string>(encodable_message));
+  }
+  auto& encodable_minimum_os_version = list[3];
+  if (!encodable_minimum_os_version.IsNull()) {
+    decoded.set_minimum_os_version(std::get<std::string>(encodable_minimum_os_version));
+  }
+  auto& encodable_alternative_codecs = list[4];
+  if (!encodable_alternative_codecs.IsNull()) {
+    decoded.set_alternative_codecs(std::get<EncodableList>(encodable_alternative_codecs));
+  }
+  return decoded;
+}
+
 // VideoPlayerEventMessage
 
 VideoPlayerEventMessage::VideoPlayerEventMessage(const std::string& type)
@@ -1900,51 +2170,62 @@ EncodableValue PigeonInternalCodecSerializer::ReadValueOfType(
     case 137: {
         const auto& encodable_enum_arg = ReadValue(stream);
         const int64_t enum_arg_value = encodable_enum_arg.IsNull() ? 0 : encodable_enum_arg.LongValue();
-        return encodable_enum_arg.IsNull() ? EncodableValue() : CustomEncodableValue(static_cast<PlaybackStateEnum>(enum_arg_value));
+        return encodable_enum_arg.IsNull() ? EncodableValue() : CustomEncodableValue(static_cast<CodecSupportLevelEnum>(enum_arg_value));
       }
     case 138: {
-        return CustomEncodableValue(VideoSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        const auto& encodable_enum_arg = ReadValue(stream);
+        const int64_t enum_arg_value = encodable_enum_arg.IsNull() ? 0 : encodable_enum_arg.LongValue();
+        return encodable_enum_arg.IsNull() ? EncodableValue() : CustomEncodableValue(static_cast<PlaybackStateEnum>(enum_arg_value));
       }
     case 139: {
-        return CustomEncodableValue(VideoPlayerOptionsMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(VideoSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 140: {
-        return CustomEncodableValue(PlatformInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(VideoPlayerOptionsMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 141: {
-        return CustomEncodableValue(BatteryInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(PlatformInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 142: {
-        return CustomEncodableValue(SubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(BatteryInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 143: {
-        return CustomEncodableValue(AudioTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(SubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 144: {
-        return CustomEncodableValue(VideoQualityTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(AudioTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 145: {
-        return CustomEncodableValue(PipOptionsMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(VideoQualityTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 146: {
-        return CustomEncodableValue(PipActionMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(PipOptionsMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 147: {
-        return CustomEncodableValue(CastDeviceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(PipActionMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 148: {
-        return CustomEncodableValue(VideoMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(CastDeviceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 149: {
-        return CustomEncodableValue(MediaMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(VideoMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 150: {
-        return CustomEncodableValue(SubtitleSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(MediaMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 151: {
-        return CustomEncodableValue(ExternalSubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(SubtitleSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 152: {
+        return CustomEncodableValue(ExternalSubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 153: {
+        return CustomEncodableValue(CodecInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 154: {
+        return CustomEncodableValue(CodecCompatibilityMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 155: {
         return CustomEncodableValue(VideoPlayerEventMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     default:
@@ -1996,83 +2277,98 @@ void PigeonInternalCodecSerializer::WriteValue(
       WriteValue(EncodableValue(static_cast<int>(std::any_cast<SubtitleFormatEnum>(*custom_value))), stream);
       return;
     }
-    if (custom_value->type() == typeid(PlaybackStateEnum)) {
+    if (custom_value->type() == typeid(CodecSupportLevelEnum)) {
       stream->WriteByte(137);
+      WriteValue(EncodableValue(static_cast<int>(std::any_cast<CodecSupportLevelEnum>(*custom_value))), stream);
+      return;
+    }
+    if (custom_value->type() == typeid(PlaybackStateEnum)) {
+      stream->WriteByte(138);
       WriteValue(EncodableValue(static_cast<int>(std::any_cast<PlaybackStateEnum>(*custom_value))), stream);
       return;
     }
     if (custom_value->type() == typeid(VideoSourceMessage)) {
-      stream->WriteByte(138);
+      stream->WriteByte(139);
       WriteValue(EncodableValue(std::any_cast<VideoSourceMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(VideoPlayerOptionsMessage)) {
-      stream->WriteByte(139);
+      stream->WriteByte(140);
       WriteValue(EncodableValue(std::any_cast<VideoPlayerOptionsMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(PlatformInfoMessage)) {
-      stream->WriteByte(140);
+      stream->WriteByte(141);
       WriteValue(EncodableValue(std::any_cast<PlatformInfoMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(BatteryInfoMessage)) {
-      stream->WriteByte(141);
+      stream->WriteByte(142);
       WriteValue(EncodableValue(std::any_cast<BatteryInfoMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(SubtitleTrackMessage)) {
-      stream->WriteByte(142);
+      stream->WriteByte(143);
       WriteValue(EncodableValue(std::any_cast<SubtitleTrackMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(AudioTrackMessage)) {
-      stream->WriteByte(143);
+      stream->WriteByte(144);
       WriteValue(EncodableValue(std::any_cast<AudioTrackMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(VideoQualityTrackMessage)) {
-      stream->WriteByte(144);
+      stream->WriteByte(145);
       WriteValue(EncodableValue(std::any_cast<VideoQualityTrackMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(PipOptionsMessage)) {
-      stream->WriteByte(145);
+      stream->WriteByte(146);
       WriteValue(EncodableValue(std::any_cast<PipOptionsMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(PipActionMessage)) {
-      stream->WriteByte(146);
+      stream->WriteByte(147);
       WriteValue(EncodableValue(std::any_cast<PipActionMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(CastDeviceMessage)) {
-      stream->WriteByte(147);
+      stream->WriteByte(148);
       WriteValue(EncodableValue(std::any_cast<CastDeviceMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(VideoMetadataMessage)) {
-      stream->WriteByte(148);
+      stream->WriteByte(149);
       WriteValue(EncodableValue(std::any_cast<VideoMetadataMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(MediaMetadataMessage)) {
-      stream->WriteByte(149);
+      stream->WriteByte(150);
       WriteValue(EncodableValue(std::any_cast<MediaMetadataMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(SubtitleSourceMessage)) {
-      stream->WriteByte(150);
+      stream->WriteByte(151);
       WriteValue(EncodableValue(std::any_cast<SubtitleSourceMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(ExternalSubtitleTrackMessage)) {
-      stream->WriteByte(151);
+      stream->WriteByte(152);
       WriteValue(EncodableValue(std::any_cast<ExternalSubtitleTrackMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
+    if (custom_value->type() == typeid(CodecInfoMessage)) {
+      stream->WriteByte(153);
+      WriteValue(EncodableValue(std::any_cast<CodecInfoMessage>(*custom_value).ToEncodableList()), stream);
+      return;
+    }
+    if (custom_value->type() == typeid(CodecCompatibilityMessage)) {
+      stream->WriteByte(154);
+      WriteValue(EncodableValue(std::any_cast<CodecCompatibilityMessage>(*custom_value).ToEncodableList()), stream);
+      return;
+    }
     if (custom_value->type() == typeid(VideoPlayerEventMessage)) {
-      stream->WriteByte(152);
+      stream->WriteByte(155);
       WriteValue(EncodableValue(std::any_cast<VideoPlayerEventMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
@@ -3989,6 +4285,86 @@ void ProVideoPlayerHostApi::SetUp(
       channel.SetMessageHandler(nullptr);
     }
   }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecSupport" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_codec_arg = args.at(0);
+          if (encodable_codec_arg.IsNull()) {
+            reply(WrapError("codec_arg unexpectedly null."));
+            return;
+          }
+          const auto& codec_arg = std::any_cast<const CodecInfoMessage&>(std::get<CustomEncodableValue>(encodable_codec_arg));
+          api->CheckCodecSupport(codec_arg, [reply](ErrorOr<CodecCompatibilityMessage>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            wrapped.push_back(CustomEncodableValue(std::move(output).TakeValue()));
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecsSupport" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_codecs_arg = args.at(0);
+          if (encodable_codecs_arg.IsNull()) {
+            reply(WrapError("codecs_arg unexpectedly null."));
+            return;
+          }
+          const auto& codecs_arg = std::get<EncodableList>(encodable_codecs_arg);
+          api->CheckCodecsSupport(codecs_arg, [reply](ErrorOr<EncodableList>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            wrapped.push_back(EncodableValue(std::move(output).TakeValue()));
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.getSupportedCodecs" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          api->GetSupportedCodecs([reply](ErrorOr<EncodableList>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            wrapped.push_back(EncodableValue(std::move(output).TakeValue()));
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
 }
 
 EncodableValue ProVideoPlayerHostApi::WrapError(std::string_view error_message) {
@@ -4045,7 +4421,7 @@ void ProVideoPlayerFlutterApi::OnEvent(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4074,7 +4450,7 @@ void ProVideoPlayerFlutterApi::OnError(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4101,7 +4477,7 @@ void ProVideoPlayerFlutterApi::OnMetadataExtracted(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4126,7 +4502,7 @@ void ProVideoPlayerFlutterApi::OnPlaybackCompleted(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4153,7 +4529,7 @@ void ProVideoPlayerFlutterApi::OnPipActionTriggered(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4182,7 +4558,7 @@ void ProVideoPlayerFlutterApi::OnCastStateChanged(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4209,7 +4585,7 @@ void ProVideoPlayerFlutterApi::OnSubtitleTracksChanged(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4236,7 +4612,7 @@ void ProVideoPlayerFlutterApi::OnAudioTracksChanged(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 
@@ -4261,7 +4637,7 @@ void ProVideoPlayerFlutterApi::OnBatteryInfoChanged(
       }
     } else {
       on_error(CreateConnectionError(channel_name));
-    }
+    } 
   });
 }
 

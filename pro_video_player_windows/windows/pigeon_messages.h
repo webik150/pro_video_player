@@ -154,6 +154,18 @@ enum class SubtitleFormatEnum {
   kTtml = 4
 };
 
+// Codec support level.
+enum class CodecSupportLevelEnum {
+  // Codec is fully supported.
+  kSupported = 0,
+  // Codec is probably supported.
+  kProbablySupported = 1,
+  // Codec is not supported.
+  kNotSupported = 2,
+  // Support status is unknown.
+  kUnknown = 3
+};
+
 // Playback state enumeration.
 enum class PlaybackStateEnum {
   // Player is uninitialized.
@@ -269,7 +281,10 @@ class VideoPlayerOptionsMessage {
     bool allow_background_playback,
     bool mix_with_others,
     bool allow_pip,
-    bool auto_enter_pip_on_background);
+    bool auto_enter_pip_on_background,
+    const SubtitleRenderModeEnum* subtitle_render_mode,
+    const bool* subtitles_enabled,
+    const bool* show_subtitles_by_default);
 
   // Whether to start playing automatically after initialization.
   bool auto_play() const;
@@ -343,6 +358,21 @@ class VideoPlayerOptionsMessage {
   bool auto_enter_pip_on_background() const;
   void set_auto_enter_pip_on_background(bool value_arg);
 
+  // The subtitle render mode for embedded subtitles.
+  const SubtitleRenderModeEnum* subtitle_render_mode() const;
+  void set_subtitle_render_mode(const SubtitleRenderModeEnum* value_arg);
+  void set_subtitle_render_mode(const SubtitleRenderModeEnum& value_arg);
+
+  // Whether subtitles are enabled.
+  const bool* subtitles_enabled() const;
+  void set_subtitles_enabled(const bool* value_arg);
+  void set_subtitles_enabled(bool value_arg);
+
+  // Whether to show subtitles by default when available.
+  const bool* show_subtitles_by_default() const;
+  void set_show_subtitles_by_default(const bool* value_arg);
+  void set_show_subtitles_by_default(bool value_arg);
+
 
  private:
   static VideoPlayerOptionsMessage FromEncodableList(const flutter::EncodableList& list);
@@ -366,6 +396,9 @@ class VideoPlayerOptionsMessage {
   bool mix_with_others_;
   bool allow_pip_;
   bool auto_enter_pip_on_background_;
+  std::optional<SubtitleRenderModeEnum> subtitle_render_mode_;
+  std::optional<bool> subtitles_enabled_;
+  std::optional<bool> show_subtitles_by_default_;
 
 };
 
@@ -1025,6 +1058,119 @@ class ExternalSubtitleTrackMessage {
 };
 
 
+// Codec information for compatibility checking.
+//
+// Generated class from Pigeon that represents data sent in messages.
+class CodecInfoMessage {
+ public:
+  // Constructs an object setting all non-nullable fields.
+  explicit CodecInfoMessage(
+    const std::string& fourcc,
+    const std::string& name);
+
+  // Constructs an object setting all fields.
+  explicit CodecInfoMessage(
+    const std::string& fourcc,
+    const std::string& name,
+    const std::string* codec_string,
+    const std::string* mime_type);
+
+  // Four character code (e.g., "avc1", "hvc1", "mp4a").
+  const std::string& fourcc() const;
+  void set_fourcc(std::string_view value_arg);
+
+  // Human-readable codec name (e.g., "H.264", "HEVC", "AAC").
+  const std::string& name() const;
+  void set_name(std::string_view value_arg);
+
+  // Full codec string including profile and level.
+  const std::string* codec_string() const;
+  void set_codec_string(const std::string_view* value_arg);
+  void set_codec_string(std::string_view value_arg);
+
+  // MIME type for the codec (e.g., "video/mp4", "audio/mp4").
+  const std::string* mime_type() const;
+  void set_mime_type(const std::string_view* value_arg);
+  void set_mime_type(std::string_view value_arg);
+
+
+ private:
+  static CodecInfoMessage FromEncodableList(const flutter::EncodableList& list);
+  flutter::EncodableList ToEncodableList() const;
+  friend class CodecCompatibilityMessage;
+  friend class ProVideoPlayerHostApi;
+  friend class ProVideoPlayerFlutterApi;
+  friend class PigeonInternalCodecSerializer;
+  std::string fourcc_;
+  std::string name_;
+  std::optional<std::string> codec_string_;
+  std::optional<std::string> mime_type_;
+
+};
+
+
+// Result of checking codec compatibility.
+//
+// Generated class from Pigeon that represents data sent in messages.
+class CodecCompatibilityMessage {
+ public:
+  // Constructs an object setting all non-nullable fields.
+  explicit CodecCompatibilityMessage(
+    const CodecInfoMessage& codec,
+    const CodecSupportLevelEnum& support_level);
+
+  // Constructs an object setting all fields.
+  explicit CodecCompatibilityMessage(
+    const CodecInfoMessage& codec,
+    const CodecSupportLevelEnum& support_level,
+    const std::string* message,
+    const std::string* minimum_os_version,
+    const flutter::EncodableList* alternative_codecs);
+
+  ~CodecCompatibilityMessage() = default;
+  CodecCompatibilityMessage(const CodecCompatibilityMessage& other);
+  CodecCompatibilityMessage& operator=(const CodecCompatibilityMessage& other);
+  CodecCompatibilityMessage(CodecCompatibilityMessage&& other) = default;
+  CodecCompatibilityMessage& operator=(CodecCompatibilityMessage&& other) noexcept = default;
+  // The codec that was checked.
+  const CodecInfoMessage& codec() const;
+  void set_codec(const CodecInfoMessage& value_arg);
+
+  // The level of support for this codec.
+  const CodecSupportLevelEnum& support_level() const;
+  void set_support_level(const CodecSupportLevelEnum& value_arg);
+
+  // Human-readable message about the support status.
+  const std::string* message() const;
+  void set_message(const std::string_view* value_arg);
+  void set_message(std::string_view value_arg);
+
+  // Minimum OS version required for this codec.
+  const std::string* minimum_os_version() const;
+  void set_minimum_os_version(const std::string_view* value_arg);
+  void set_minimum_os_version(std::string_view value_arg);
+
+  // Alternative codecs that are supported.
+  const flutter::EncodableList* alternative_codecs() const;
+  void set_alternative_codecs(const flutter::EncodableList* value_arg);
+  void set_alternative_codecs(const flutter::EncodableList& value_arg);
+
+
+ private:
+  static CodecCompatibilityMessage FromEncodableList(const flutter::EncodableList& list);
+  flutter::EncodableList ToEncodableList() const;
+  friend class ProVideoPlayerHostApi;
+  friend class ProVideoPlayerFlutterApi;
+  friend class PigeonInternalCodecSerializer;
+  std::unique_ptr<CodecInfoMessage> codec_;
+  CodecSupportLevelEnum support_level_;
+  std::optional<std::string> message_;
+  std::optional<std::string> minimum_os_version_;
+  std::optional<flutter::EncodableList> alternative_codecs_;
+
+};
+
+
 // Video player event data sent from the platform to Dart.
 //
 // This is a base class for all events. Specific event types will include
@@ -1380,6 +1526,34 @@ class ProVideoPlayerHostApi {
   virtual void GetCurrentCastDevice(
     int64_t player_id,
     std::function<void(ErrorOr<std::optional<CastDeviceMessage>> reply)> result) = 0;
+  // Checks if a specific codec is supported on this platform.
+  //
+  // Uses platform-specific APIs:
+  // - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+  // - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+  // - Android: MediaCodecList.findDecoderForFormat()
+  //
+  // The [codec] parameter should include the fourcc and optionally
+  // the full codec string for more accurate checking.
+  virtual void CheckCodecSupport(
+    const CodecInfoMessage& codec,
+    std::function<void(ErrorOr<CodecCompatibilityMessage> reply)> result) = 0;
+  // Checks if multiple codecs are supported on this platform.
+  //
+  // More efficient than calling [checkCodecSupport] multiple times
+  // as it may batch platform API calls.
+  virtual void CheckCodecsSupport(
+    const flutter::EncodableList& codecs,
+    std::function<void(ErrorOr<flutter::EncodableList> reply)> result) = 0;
+  // Gets a list of codecs that are guaranteed to be supported.
+  //
+  // Returns the platform's baseline supported codecs:
+  // - Common video codecs (H.264, potentially HEVC)
+  // - Common audio codecs (AAC, MP3)
+  //
+  // This can be used to suggest transcoding options when
+  // a file contains unsupported codecs.
+  virtual void GetSupportedCodecs(std::function<void(ErrorOr<flutter::EncodableList> reply)> result) = 0;
 
   // The codec used by ProVideoPlayerHostApi.
   static const flutter::StandardMessageCodec& GetCodec();

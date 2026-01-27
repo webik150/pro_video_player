@@ -294,7 +294,8 @@ void main() {
     });
 
     test('setClosedCaptionFile loads captions', () async {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:00,000 --> 00:00:05,000
 Test caption
 ''';
@@ -330,7 +331,8 @@ Test caption
 
   group('Caption auto-update', () {
     test('caption updates based on playback position', () async {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:00,000 --> 00:00:05,000
 First caption
 

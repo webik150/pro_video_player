@@ -187,7 +187,6 @@ class MobileVideoControls extends StatelessWidget {
         children: [
           // Top area with gradient (black at top fading to transparent)
           Flexible(
-            fit: FlexFit.loose,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(

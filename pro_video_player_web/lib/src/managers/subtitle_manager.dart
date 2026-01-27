@@ -388,14 +388,16 @@ class SubtitleManager with WebManagerCallbacks {
   ///
   /// - 'native': Browser renders subtitles
   /// - 'flutter': Extract cues and send to Flutter
-  /// - 'auto': Default to native
+  /// - 'auto': Defaults to Flutter rendering
   void setRenderMode(String mode) {
     verboseLog('Subtitle render mode set to: $mode', tag: 'SubtitleManager');
 
     final textTracks = videoElement.mockTextTracks;
     if (textTracks == null) return;
 
-    final shouldUseFlutterRendering = (mode == 'flutter');
+    // Auto mode defaults to flutter rendering
+    final effectiveMode = (mode == 'auto') ? 'flutter' : mode;
+    final shouldUseFlutterRendering = (effectiveMode == 'flutter');
 
     if (shouldUseFlutterRendering) {
       // Set all tracks to 'hidden' mode for Flutter rendering

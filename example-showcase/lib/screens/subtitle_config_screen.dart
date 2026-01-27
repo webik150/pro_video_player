@@ -148,7 +148,7 @@ class _SubtitleConfigScreenState extends State<SubtitleConfigScreen> {
       case SubtitleRenderMode.flutter:
         return 'Flutter (Custom styling, works with all controls)';
       case SubtitleRenderMode.auto:
-        return 'Auto (Defaults to native rendering)';
+        return 'Auto (Defaults to Flutter rendering)';
     }
   }
 
@@ -343,7 +343,7 @@ class _SubtitleConfigScreenState extends State<SubtitleConfigScreen> {
                 value: SubtitleRenderMode.auto,
                 child: ListTile(
                   title: Text('Auto'),
-                  subtitle: Text('Defaults to native rendering'),
+                  subtitle: Text('Defaults to Flutter rendering'),
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -487,37 +487,21 @@ class _SubtitleConfigScreenState extends State<SubtitleConfigScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _subtitleRenderMode == SubtitleRenderMode.flutter
-                ? Colors.green.withValues(alpha: 0.15)
-                : Colors.amber.withValues(alpha: 0.15),
+            color: Colors.blue.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _subtitleRenderMode == SubtitleRenderMode.flutter ? Colors.green.shade700 : Colors.amber.shade700,
-            ),
+            border: Border.all(color: Colors.blue.shade700),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                _subtitleRenderMode == SubtitleRenderMode.flutter ? Icons.check_circle_outline : Icons.info_outline,
-                size: 18,
-                color: _subtitleRenderMode == SubtitleRenderMode.flutter
-                    ? Colors.green.shade700
-                    : Colors.amber.shade700,
-              ),
+              Icon(Icons.info_outline, size: 18, color: Colors.blue.shade700),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _subtitleRenderMode == SubtitleRenderMode.flutter
-                      ? 'Styling applies to ALL subtitles (embedded + external) because '
-                            'subtitle render mode is set to "Flutter".'
-                      : 'Styling only applies to external subtitles. Set subtitle render mode to "Flutter" '
-                            'in Initialization Options to style embedded subtitles too.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _subtitleRenderMode == SubtitleRenderMode.flutter
-                        ? Colors.green.shade900
-                        : Colors.amber.shade900,
-                  ),
+                  'Styling applies to external subtitles only. To test styling, load an external '
+                  'subtitle below (e.g., "Rich Text Demo" samples). Embedded HLS subtitles use '
+                  'platform rendering and cannot be styled.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.blue.shade900),
                 ),
               ),
             ],

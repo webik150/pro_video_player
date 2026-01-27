@@ -145,6 +145,21 @@ enum SubtitleFormatEnum {
   ttml,
 }
 
+/// Codec support level.
+enum CodecSupportLevelEnum {
+  /// Codec is fully supported.
+  supported,
+
+  /// Codec is probably supported.
+  probablySupported,
+
+  /// Codec is not supported.
+  notSupported,
+
+  /// Support status is unknown.
+  unknown,
+}
+
 /// Playback state enumeration.
 enum PlaybackStateEnum {
   /// Player is uninitialized.
@@ -232,6 +247,9 @@ class VideoPlayerOptionsMessage {
     required this.mixWithOthers,
     required this.allowPip,
     required this.autoEnterPipOnBackground,
+    this.subtitleRenderMode,
+    this.subtitlesEnabled,
+    this.showSubtitlesByDefault,
   });
 
   /// Whether to start playing automatically after initialization.
@@ -282,6 +300,15 @@ class VideoPlayerOptionsMessage {
   /// Whether to auto-enter PiP when app goes to background.
   bool autoEnterPipOnBackground;
 
+  /// The subtitle render mode for embedded subtitles.
+  SubtitleRenderModeEnum? subtitleRenderMode;
+
+  /// Whether subtitles are enabled.
+  bool? subtitlesEnabled;
+
+  /// Whether to show subtitles by default when available.
+  bool? showSubtitlesByDefault;
+
   Object encode() {
     return <Object?>[
       autoPlay,
@@ -300,6 +327,9 @@ class VideoPlayerOptionsMessage {
       mixWithOthers,
       allowPip,
       autoEnterPipOnBackground,
+      subtitleRenderMode,
+      subtitlesEnabled,
+      showSubtitlesByDefault,
     ];
   }
 
@@ -322,6 +352,9 @@ class VideoPlayerOptionsMessage {
       mixWithOthers: result[13]! as bool,
       allowPip: result[14]! as bool,
       autoEnterPipOnBackground: result[15]! as bool,
+      subtitleRenderMode: result[16] as SubtitleRenderModeEnum?,
+      subtitlesEnabled: result[17] as bool?,
+      showSubtitlesByDefault: result[18] as bool?,
     );
   }
 }
@@ -768,6 +801,78 @@ class ExternalSubtitleTrackMessage {
   }
 }
 
+/// Codec information for compatibility checking.
+class CodecInfoMessage {
+  CodecInfoMessage({required this.fourcc, required this.name, this.codecString, this.mimeType});
+
+  /// Four character code (e.g., "avc1", "hvc1", "mp4a").
+  String fourcc;
+
+  /// Human-readable codec name (e.g., "H.264", "HEVC", "AAC").
+  String name;
+
+  /// Full codec string including profile and level.
+  String? codecString;
+
+  /// MIME type for the codec (e.g., "video/mp4", "audio/mp4").
+  String? mimeType;
+
+  Object encode() {
+    return <Object?>[fourcc, name, codecString, mimeType];
+  }
+
+  static CodecInfoMessage decode(Object result) {
+    result as List<Object?>;
+    return CodecInfoMessage(
+      fourcc: result[0]! as String,
+      name: result[1]! as String,
+      codecString: result[2] as String?,
+      mimeType: result[3] as String?,
+    );
+  }
+}
+
+/// Result of checking codec compatibility.
+class CodecCompatibilityMessage {
+  CodecCompatibilityMessage({
+    required this.codec,
+    required this.supportLevel,
+    this.message,
+    this.minimumOsVersion,
+    this.alternativeCodecs,
+  });
+
+  /// The codec that was checked.
+  CodecInfoMessage codec;
+
+  /// The level of support for this codec.
+  CodecSupportLevelEnum supportLevel;
+
+  /// Human-readable message about the support status.
+  String? message;
+
+  /// Minimum OS version required for this codec.
+  String? minimumOsVersion;
+
+  /// Alternative codecs that are supported.
+  List<String?>? alternativeCodecs;
+
+  Object encode() {
+    return <Object?>[codec, supportLevel, message, minimumOsVersion, alternativeCodecs];
+  }
+
+  static CodecCompatibilityMessage decode(Object result) {
+    result as List<Object?>;
+    return CodecCompatibilityMessage(
+      codec: result[0]! as CodecInfoMessage,
+      supportLevel: result[1]! as CodecSupportLevelEnum,
+      message: result[2] as String?,
+      minimumOsVersion: result[3] as String?,
+      alternativeCodecs: (result[4] as List<Object?>?)?.cast<String?>(),
+    );
+  }
+}
+
 /// Video player event data sent from the platform to Dart.
 ///
 /// This is a base class for all events. Specific event types will include
@@ -863,53 +968,62 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is SubtitleFormatEnum) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    } else if (value is PlaybackStateEnum) {
+    } else if (value is CodecSupportLevelEnum) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
-    } else if (value is VideoSourceMessage) {
+    } else if (value is PlaybackStateEnum) {
       buffer.putUint8(138);
-      writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerOptionsMessage) {
+      writeValue(buffer, value.index);
+    } else if (value is VideoSourceMessage) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    } else if (value is PlatformInfoMessage) {
+    } else if (value is VideoPlayerOptionsMessage) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    } else if (value is BatteryInfoMessage) {
+    } else if (value is PlatformInfoMessage) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleTrackMessage) {
+    } else if (value is BatteryInfoMessage) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    } else if (value is AudioTrackMessage) {
+    } else if (value is SubtitleTrackMessage) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    } else if (value is VideoQualityTrackMessage) {
+    } else if (value is AudioTrackMessage) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    } else if (value is PipOptionsMessage) {
+    } else if (value is VideoQualityTrackMessage) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    } else if (value is PipActionMessage) {
+    } else if (value is PipOptionsMessage) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    } else if (value is CastDeviceMessage) {
+    } else if (value is PipActionMessage) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    } else if (value is VideoMetadataMessage) {
+    } else if (value is CastDeviceMessage) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    } else if (value is MediaMetadataMessage) {
+    } else if (value is VideoMetadataMessage) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleSourceMessage) {
+    } else if (value is MediaMetadataMessage) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    } else if (value is ExternalSubtitleTrackMessage) {
+    } else if (value is SubtitleSourceMessage) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerEventMessage) {
+    } else if (value is ExternalSubtitleTrackMessage) {
       buffer.putUint8(152);
+      writeValue(buffer, value.encode());
+    } else if (value is CodecInfoMessage) {
+      buffer.putUint8(153);
+      writeValue(buffer, value.encode());
+    } else if (value is CodecCompatibilityMessage) {
+      buffer.putUint8(154);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoPlayerEventMessage) {
+      buffer.putUint8(155);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -945,36 +1059,43 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : SubtitleFormatEnum.values[value];
       case 137:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PlaybackStateEnum.values[value];
+        return value == null ? null : CodecSupportLevelEnum.values[value];
       case 138:
-        return VideoSourceMessage.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PlaybackStateEnum.values[value];
       case 139:
-        return VideoPlayerOptionsMessage.decode(readValue(buffer)!);
+        return VideoSourceMessage.decode(readValue(buffer)!);
       case 140:
-        return PlatformInfoMessage.decode(readValue(buffer)!);
+        return VideoPlayerOptionsMessage.decode(readValue(buffer)!);
       case 141:
-        return BatteryInfoMessage.decode(readValue(buffer)!);
+        return PlatformInfoMessage.decode(readValue(buffer)!);
       case 142:
-        return SubtitleTrackMessage.decode(readValue(buffer)!);
+        return BatteryInfoMessage.decode(readValue(buffer)!);
       case 143:
-        return AudioTrackMessage.decode(readValue(buffer)!);
+        return SubtitleTrackMessage.decode(readValue(buffer)!);
       case 144:
-        return VideoQualityTrackMessage.decode(readValue(buffer)!);
+        return AudioTrackMessage.decode(readValue(buffer)!);
       case 145:
-        return PipOptionsMessage.decode(readValue(buffer)!);
+        return VideoQualityTrackMessage.decode(readValue(buffer)!);
       case 146:
-        return PipActionMessage.decode(readValue(buffer)!);
+        return PipOptionsMessage.decode(readValue(buffer)!);
       case 147:
-        return CastDeviceMessage.decode(readValue(buffer)!);
+        return PipActionMessage.decode(readValue(buffer)!);
       case 148:
-        return VideoMetadataMessage.decode(readValue(buffer)!);
+        return CastDeviceMessage.decode(readValue(buffer)!);
       case 149:
-        return MediaMetadataMessage.decode(readValue(buffer)!);
+        return VideoMetadataMessage.decode(readValue(buffer)!);
       case 150:
-        return SubtitleSourceMessage.decode(readValue(buffer)!);
+        return MediaMetadataMessage.decode(readValue(buffer)!);
       case 151:
-        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+        return SubtitleSourceMessage.decode(readValue(buffer)!);
       case 152:
+        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+      case 153:
+        return CodecInfoMessage.decode(readValue(buffer)!);
+      case 154:
+        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+      case 155:
         return VideoPlayerEventMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -2797,6 +2918,108 @@ class ProVideoPlayerHostApi {
       );
     } else {
       return (pigeonVar_replyList[0] as CastDeviceMessage?);
+    }
+  }
+
+  /// Checks if a specific codec is supported on this platform.
+  ///
+  /// Uses platform-specific APIs:
+  /// - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+  /// - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+  /// - Android: MediaCodecList.findDecoderForFormat()
+  ///
+  /// The [codec] parameter should include the fourcc and optionally
+  /// the full codec string for more accurate checking.
+  Future<CodecCompatibilityMessage> checkCodecSupport(CodecInfoMessage codec) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecSupport$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_channel.send(<Object?>[codec]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as CodecCompatibilityMessage?)!;
+    }
+  }
+
+  /// Checks if multiple codecs are supported on this platform.
+  ///
+  /// More efficient than calling [checkCodecSupport] multiple times
+  /// as it may batch platform API calls.
+  Future<List<CodecCompatibilityMessage?>> checkCodecsSupport(List<CodecInfoMessage?> codecs) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecsSupport$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_channel.send(<Object?>[codecs]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<CodecCompatibilityMessage?>();
+    }
+  }
+
+  /// Gets a list of codecs that are guaranteed to be supported.
+  ///
+  /// Returns the platform's baseline supported codecs:
+  /// - Common video codecs (H.264, potentially HEVC)
+  /// - Common audio codecs (AAC, MP3)
+  ///
+  /// This can be used to suggest transcoding options when
+  /// a file contains unsupported codecs.
+  Future<List<String?>> getSupportedCodecs() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.getSupportedCodecs$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_channel.send(null) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<String?>();
     }
   }
 }

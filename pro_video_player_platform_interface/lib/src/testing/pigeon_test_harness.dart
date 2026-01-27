@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../pigeon_generated/messages.g.dart';
@@ -159,7 +158,7 @@ class PigeonTestHarness {
     // Use the same codec that Pigeon-generated ProVideoPlayerHostApi uses
     const codec = ProVideoPlayerHostApi.pigeonChannelCodec;
 
-    messenger.setMockMessageHandler(channelName, (ByteData? message) async {
+    messenger.setMockMessageHandler(channelName, (message) async {
       // Decode arguments (null message means no arguments)
       final List<Object?> args;
       if (message == null) {

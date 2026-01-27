@@ -144,6 +144,30 @@ This document tracks the development progress and planned features for the Pro V
 ### Android App Behavior
 - example-simple-player manifest configuration (singleTop, no taskAffinity)
 
+### Pure Dart Container Header Parser (Phase 1, 2 & 3)
+- **Phase 1: MP4/MOV parser** (ISO base media file format)
+  - Type system: ContainerMetadata, ContainerTrack, CodecInfo, VideoTrackInfo, AudioTrackInfo, ContainerTrackType (144 type tests)
+  - Mp4BoxReader for low-level box parsing with 67 tests
+  - ContainerParser/Mp4Parser implementation with 40 tests
+  - Codec extraction: H.264, HEVC, VP9, AV1, AAC, AC3, Opus, ALAC, FLAC
+  - Integration tested with real MP4 files
+- **Phase 2: MKV/WebM parser** (EBML/Matroska specification)
+  - EbmlReader for VINT parsing and element navigation (32 tests)
+  - MkvParser with track and codec extraction (31 tests)
+  - Codec mapping: V_MPEG4/ISO/AVC → H.264, V_MPEGH/ISO/HEVC → HEVC, V_VP9, V_AV1, A_AAC, A_OPUS, A_VORBIS, A_AC3, A_FLAC, S_TEXT/UTF8, S_TEXT/WEBVTT, S_TEXT/ASS
+  - ContainerParser auto-detection of MP4 vs MKV/WebM formats
+- **Phase 3: Additional format parsers** (TS, FLV, AVI)
+  - TsParser for MPEG Transport Stream (PAT/PMT parsing, 29 tests)
+  - FlvParser for Flash Video (audio/video tag parsing, 29 tests)
+  - AviParser for Audio Video Interleave (RIFF structure, 36 tests)
+  - Codec support: H.264, HEVC, MPEG-2, VP8/9, AV1, AAC, MP3, AC-3, DTS, PCM
+  - ContainerParser auto-detection of all 8 format families
+- **Streaming manifest parsers:**
+  - HlsManifestParser: M3U8 master playlist parsing (variants, audio tracks, subtitles) with 23 tests
+  - DashManifestParser: MPD manifest parsing (representations, duration, profiles) with 23 tests
+- File/URL parsing with HTTP range request support for efficient remote parsing
+- Total: 408+ tests passing, all checks pass
+
 ### Code Architecture Refactoring
 - ProVideoPlayerController file organization via mixins (1,540 → 381 lines, 75% reduction)
   - Created base class with protected members for mixin access
@@ -245,6 +269,25 @@ This document tracks the development progress and planned features for the Pro V
   - All legacy MethodChannel code removed (Android, Windows, Linux now stub-only placeholders)
   - Clean codebase ready for future implementation (Windows/Linux)
 - **Status:** Complete (2025-12-18) - All tests passing, all compilation checks passing
+
+### Pure Dart Video Remuxer
+- MP4/MKV/WebM/TS/FLV/AVI → HLS remuxing (fMP4 and MPEG-TS segments)
+- Phase 1-2: Sample table parsing + MP4 sample reader
+- Phase 3-4: fMP4 segment writer + HLS playlist writer
+- Phase 5: VideoRemuxer API with progress events
+- Phase 6: MPEG-TS segment writer (PAT/PMT, PES packetization)
+- Phase 7: MKV/WebM sample reader (EBML parsing)
+- Phase 8: TS/FLV/AVI sample readers
+- 200+ remuxer tests passing
+
+### Pure Dart Embedded Subtitle Extraction
+- Extract embedded subtitles from MP4/MKV/WebM containers with full styling preservation
+- SubtitleExtractor unified API with language matching and track listing
+- MP4 decoders: TX3G (with style atoms), STPP (TTML), WVTT (WebVTT)
+- MKV decoders: S_TEXT/UTF8, S_TEXT/ASS (with override tags), S_TEXT/WEBVTT
+- HLS/DASH streaming support for external subtitle files
+- Pure Dart implementation (no native APIs needed)
+- 102 extraction tests passing
 
 ### Testing Architecture Standardization
 
@@ -477,13 +520,58 @@ This document tracks the development progress and planned features for the Pro V
 
 ## In Progress 🚧
 
-*(No tasks currently in progress)*
+*No items currently in progress.*
 
 ---
 
 ## Planned (High Priority) 🔥
 
-*(No high priority tasks - architecture refactoring complete)*
+<details>
+<summary><strong>Subtitle performance and preferences</strong></summary>
+
+- [ ] **Subtitle performance and preferences**:
+  - [ ] **Performance optimization for large subtitle files**:
+    - Lazy loading - only parse cues near current playback position
+    - Preload window (e.g., ±5 minutes from current position)
+    - Cache parsed cues to avoid re-parsing
+    - Handle 2000+ cue files efficiently (2-hour movies)
+  - [ ] **Subtitle preferences persistence**:
+    - Remember user subtitle choices across sessions
+    - Save: language, enabled state, custom styling
+    - Auto-restore preferences on next video
+    - Per-user or per-app storage
+  - [ ] Note: Monitor for user-reported performance issues before implementing
+
+</details>
+
+<details>
+<summary><strong>Subtitle UX and accessibility enhancements</strong></summary>
+
+- [ ] **Subtitle UX and accessibility enhancements**:
+  - [ ] **Dual subtitle tracks** - Display two tracks simultaneously (e.g., native + learning language)
+    - Language learning use case (English + Spanish)
+    - Configurable positioning (primary bottom, secondary top)
+    - Separate styling for each track
+  - [ ] **SDH (Subtitles for Deaf/Hard of hearing) support**:
+    - Distinguish SDH/CC tracks from regular subtitles
+    - Track metadata: `isSDH`, `isForced`, `isCommentary` flags
+    - Auto-select SDH when accessibility settings detected
+    - Sound effect descriptions, speaker identification
+  - [ ] **Enhanced subtitle track metadata**:
+    - Track title/description (e.g., "English (Full)" vs "English (Forced)")
+    - Default/forced/hearing-impaired flags
+    - Codec information for debugging
+  - [ ] **Subtitle-aware seeking**:
+    - `skipToNextSubtitle()` / `skipToPreviousSubtitle()` - Jump between dialogue
+    - `replayCurrentSubtitle()` - Replay from subtitle start
+    - Useful for language learning and review
+  - [ ] **Subtitle search and navigation**:
+    - Search subtitle text content
+    - Jump to specific subtitle/dialogue
+    - Navigate through search results
+    - Educational content use case
+
+</details>
 
 ---
 
@@ -508,63 +596,139 @@ This document tracks the development progress and planned features for the Pro V
 
 </details>
 
-
 <details>
-<summary><strong>Pure Dart container header parser</strong></summary>
+<summary><strong>Audio enhancements</strong></summary>
 
-- [ ] Pure Dart container header parser:
-  - [ ] Parse container file headers without native player (MP4, MKV, WebM, MOV, etc.)
-  - [ ] Extract ALL available streams (multiple video/audio/subtitle tracks)
-  - [ ] Per-stream metadata: codec, bitrate, language, resolution, channel layout
-  - [ ] Stream positioning data: byte offsets, duration, sample tables
-  - [ ] Extract codec strings and profiles (e.g., "hvc1.1.6.L93.B0", "vp09.00.41.08", "av01")
-  - [ ] No external dependencies (Dart-first approach using ByteData/Uint8List)
-  - [ ] Benefits over current VideoMetadata:
-    - Platform-independent (works on web without native APIs)
-    - Reveals all tracks (current implementation only shows single video/audio codec)
-    - No player initialization required (inspect before playback)
-    - Foundation for remuxing (need stream positions for segmentation)
-  - [ ] Implementation phases:
-    - [ ] Phase 1: MP4/MOV parser (ISO base media file format - box/atom structure)
-    - [ ] Phase 2: MKV/WebM parser (EBML/Matroska specification)
-    - [ ] Phase 3: Additional formats as needed
-  - [ ] Codec compatibility testing integration:
-    - [ ] Query native platform capabilities with extracted codec info
-    - [ ] iOS/macOS: AVAssetTrack.isPlayable, AVPlayer.availableVideoCodecTypes
-    - [ ] Android: MediaCodecList.findDecoderForFormat, RendererCapabilities
-    - [ ] Web: MediaSource.isTypeSupported(), HTMLMediaElement.canPlayType()
-    - [ ] Benefits:
-      - Pre-flight compatibility checks before playback attempt
-      - Intelligent fallback suggestions (alternative quality/format)
-      - Helpful error messages ("Requires iOS 17+ for AV1" vs generic failure)
-      - Platform/device-specific warnings (HEVC on Android, VP9 on iOS, DASH on Apple)
-      - Trigger remuxing only when needed
-  - [ ] Use cases: Pre-playback inspection, stream selection UI, remuxing preparation, format compatibility checks, codec capability testing
-  - [ ] Note: Header parsing only (not video decoding), reasonable performance
+- [ ] Audio enhancements:
+  - [ ] Audio boost/normalization - Amplify quiet audio
+  - [ ] Audio delay/sync adjustment - Fix audio sync issues
 
 </details>
 
 <details>
-<summary><strong>Subtitle performance and preferences</strong></summary>
+<summary><strong>Video caching</strong></summary>
 
-- [ ] **Subtitle performance and preferences**:
-  - [ ] **Performance optimization for large subtitle files**:
-    - Lazy loading - only parse cues near current playback position
-    - Preload window (e.g., ±5 minutes from current position)
-    - Cache parsed cues to avoid re-parsing
-    - Handle 2000+ cue files efficiently (2-hour movies)
-  - [ ] **Subtitle preferences persistence**:
-    - Remember user subtitle choices across sessions
-    - Save: language, enabled state, custom styling
-    - Auto-restore preferences on next video
-    - Per-user or per-app storage
-  - [ ] Note: Monitor for user-reported performance issues before implementing
+- [ ] Video caching:
+  - [ ] Configurable cache size and location
+  - [ ] Cache management (clear, preload)
+  - [ ] Offline playback support
+
+</details>
+
+<details>
+<summary><strong>Universal format support via local HLS server</strong></summary>
+
+- [ ] **Universal format support via local HLS server**
+  - **Rationale:** Enable playback of unsupported container formats (MKV, WebM, AVI, FLV, TS) on platforms with limited native support (iOS only supports MP4/MOV/HLS natively). Leverages existing Pure Dart remuxer infrastructure.
+  - **Architecture:**
+    ```
+    ┌─────────────────────────────────────────────────────────────┐
+    │                         DART SIDE                           │
+    ├─────────────────────────────────────────────────────────────┤
+    │  Container Parser → Sample Reader → HLS Remuxer             │
+    │         │                                                   │
+    │         ▼                                                   │
+    │  Local HTTP Server (dart:io HttpServer)                     │
+    │         │                                                   │
+    │  http://127.0.0.1:PORT/stream.m3u8?token=RANDOM             │
+    └─────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                       NATIVE SIDE                           │
+    ├─────────────────────────────────────────────────────────────┤
+    │  AVPlayer / ExoPlayer                                       │
+    │  - Requests HLS manifest and segments via localhost         │
+    │  - Native HTTP stack (fast, no platform channel overhead)   │
+    │  - Full native buffering/caching control                    │
+    └─────────────────────────────────────────────────────────────┘
+    ```
+  - **Why local HTTP server over direct data injection:**
+    | Aspect | Data Injection | Local HTTP Server |
+    |--------|---------------|-------------------|
+    | Latency per chunk | 10-40ms (platform channel) | < 1ms (localhost) |
+    | Seeking | Complex cancel/restart logic | Native HLS seeking |
+    | Buffering control | Partial (must implement) | Full (native APIs) |
+    | Implementation | High complexity | Medium complexity |
+    | Caching | Manual implementation | Native + server-side |
+  - **Implementation phases:**
+    - [ ] **Phase 1: Local HTTP server infrastructure**
+      - Create `LocalHlsServer` class using `dart:io` HttpServer
+      - Bind to `InternetAddress.loopbackIPv4` with random port (port 0)
+      - Token-based URL validation for security
+      - Lifecycle management (start on play, stop on dispose)
+    - [ ] **Phase 2: On-demand segment generation**
+      - Integrate with existing `VideoRemuxer` for HLS segment creation
+      - Lazy segment generation (only remux segments as requested)
+      - Memory-efficient streaming (don't load entire file)
+      - Support both fMP4 and MPEG-TS segment formats
+    - [ ] **Phase 3: Manifest generation**
+      - Generate HLS master playlist from container metadata
+      - Support VOD (full duration known) and pseudo-live (duration unknown)
+      - Include audio/subtitle track variants when available
+    - [ ] **Phase 4: Seeking and caching**
+      - Efficient seeking via byte-range mapping from container parser
+      - Optional segment caching (memory or disk)
+      - Cache invalidation on source change
+    - [ ] **Phase 5: Integration with ProVideoPlayerController**
+      - Auto-detect unsupported formats via container parser
+      - Transparent fallback: unsupported format → local HLS → native player
+      - Expose server status for debugging (`isUsingLocalServer`, `localServerPort`)
+    - [ ] **Phase 6: Platform-specific optimizations**
+      - iOS/macOS: Works with AVPlayer HLS support (native)
+      - Android: Works with ExoPlayer HLS support (native)
+      - Web: May need HLS.js integration for non-Safari browsers
+  - **Security considerations:**
+    - Bind only to loopback (127.0.0.1) - not accessible from network
+    - Random port allocation - harder to guess
+    - Token validation in URL - reject unauthorized requests
+    - Short-lived server - start/stop with playback lifecycle
+    - Platform sandboxing already isolates apps
+  - **No extra permissions required:**
+    - iOS: Localhost exempt from App Transport Security (ATS) by default
+    - Android: Localhost exempt from cleartext traffic restrictions by default
+    - INTERNET permission already present for video streaming
+  - **Formats enabled:**
+    - MKV/WebM → HLS (H.264/HEVC/VP9* + AAC/Opus/Vorbis)
+    - AVI → HLS (H.264/MPEG-4 + MP3/AAC)
+    - FLV → HLS (H.264 + AAC/MP3)
+    - TS → HLS (passthrough for compatible codecs)
+    - *Note: Codec must still be supported by native player (VP9 won't work on iOS)
+  - **Dependencies:** None (uses `dart:io` HttpServer, built into Dart SDK)
+  - **Estimated scope:** ~500-800 lines Dart code
+  - **Benefits:**
+    - Play MKV, WebM, AVI, FLV on iOS without native format support
+    - Unified playback path across all platforms
+    - Leverages existing remuxer infrastructure (200+ tests)
+    - Full native buffering and caching control
+    - No binary size increase (pure Dart)
 
 </details>
 
 ---
 
 ## Planned (Lower Priority) 💡
+
+<details>
+<summary><strong>CEA-608/708 Closed Caption Decoders</strong></summary>
+
+- [ ] **CEA-608/708 Closed Caption Decoders**
+  - **Rationale:** Support for closed captions embedded in video streams (common in broadcast TV content)
+  - **Complexity:** High - Stateful decoders with ~100+ control codes
+  - **CEA-608 challenges:**
+    - Stateful decoding (cursor position, text attributes, memory buffers)
+    - Control codes for positioning, styling, special characters
+    - Multiple modes: roll-up, pop-on, paint-on
+    - Extract from H.264/HEVC SEI data or MPEG-2 user data
+  - **CEA-708 adds:**
+    - 8 simultaneous windows (vs 2 for 608)
+    - Unicode support
+    - Pixel-level positioning
+    - Window attributes (opacity, borders, effects)
+  - **Scope:** ~500-1000 lines per decoder (vs ~100 for TX3G)
+  - **Note:** Lower priority since most streaming content uses external subtitle files (WebVTT/TTML)
+
+</details>
 
 <details>
 <summary><strong>Multi-Browser Test Execution (Parallel)</strong></summary>
@@ -609,83 +773,6 @@ This document tracks the development progress and planned features for the Pro V
 </details>
 
 <details>
-<summary><strong>Video caching</strong></summary>
-
-- [ ] Video caching:
-  - [ ] Configurable cache size and location
-  - [ ] Cache management (clear, preload)
-  - [ ] Offline playback support
-
-</details>
-
-<details>
-<summary><strong>Audio enhancements</strong></summary>
-
-- [ ] Audio enhancements:
-  - [ ] Audio boost/normalization - Amplify quiet audio
-  - [ ] Audio delay/sync adjustment - Fix audio sync issues
-
-</details>
-
-<details>
-<summary><strong>Subtitle UX and accessibility enhancements</strong></summary>
-
-- [ ] **Subtitle UX and accessibility enhancements**:
-  - [ ] **Dual subtitle tracks** - Display two tracks simultaneously (e.g., native + learning language)
-    - Language learning use case (English + Spanish)
-    - Configurable positioning (primary bottom, secondary top)
-    - Separate styling for each track
-  - [ ] **SDH (Subtitles for Deaf/Hard of hearing) support**:
-    - Distinguish SDH/CC tracks from regular subtitles
-    - Track metadata: `isSDH`, `isForced`, `isCommentary` flags
-    - Auto-select SDH when accessibility settings detected
-    - Sound effect descriptions, speaker identification
-  - [ ] **Enhanced subtitle track metadata**:
-    - Track title/description (e.g., "English (Full)" vs "English (Forced)")
-    - Default/forced/hearing-impaired flags
-    - Codec information for debugging
-  - [ ] **Subtitle-aware seeking**:
-    - `skipToNextSubtitle()` / `skipToPreviousSubtitle()` - Jump between dialogue
-    - `replayCurrentSubtitle()` - Replay from subtitle start
-    - Useful for language learning and review
-  - [ ] **Subtitle search and navigation**:
-    - Search subtitle text content
-    - Jump to specific subtitle/dialogue
-    - Navigate through search results
-    - Educational content use case
-
-</details>
-
-<details>
-<summary><strong>Advanced embedded subtitle extraction with full styling</strong></summary>
-
-- [ ] Advanced embedded subtitle extraction with full styling:
-  - [ ] Extract raw subtitle track data to preserve styling (before native player processing)
-  - [ ] Parse embedded SSA/ASS, TTML formats in Dart to preserve styling
-  - [ ] Full styling support for Flutter rendering mode (colors, fonts, positions, animations)
-  - [ ] **Two different approaches based on source type:**
-    - **Streaming (HLS/DASH) - Easier:**
-      - [ ] Parse HLS m3u8 manifest to find subtitle track URLs
-      - [ ] Parse DASH MPD manifest to find subtitle segments
-      - [ ] Fetch subtitle files/segments directly (often WebVTT)
-      - [ ] Bypass native player subtitle handling entirely
-      - [ ] Benefit: Subtitles are already separate files in stream manifests
-    - **Local files (MP4/MKV) - Complex:**
-      - [ ] iOS/macOS: Use `AVAssetReader` to extract raw subtitle track data from container
-      - [ ] Android: Custom ExoPlayer extractors or `MediaExtractor` API to demux
-      - [ ] Web: Limited - may not be feasible due to browser API constraints
-      - [ ] Requires: Container demuxing, track extraction
-  - [ ] Benefits:
-    - Preserve advanced SSA/ASS styling from embedded tracks (not just plain text)
-    - Maintain TTML positioning and formatting metadata
-    - **Works with both local files AND streaming content (HLS/DASH)**
-    - Consistent with external subtitle file parsing approach
-  - [ ] Current limitation: Native extraction only provides plain text cues, styling is lost
-  - [ ] Note: Streaming implementation may be easier to start with (manifest parsing vs container demuxing)
-
-</details>
-
-<details>
 <summary><strong>DLNA/UPnP streaming support</strong></summary>
 
 - [ ] DLNA/UPnP streaming support:
@@ -714,22 +801,6 @@ This document tracks the development progress and planned features for the Pro V
   - [ ] Add GCKUICastButton alongside AVRoutePickerView in CastButton widget
   - [ ] Show combined picker or user-selectable mode (AirPlay vs Chromecast)
   - [ ] Note: Requires adding google-cast-sdk dependency (~2MB)
-
-</details>
-
-<details>
-<summary><strong>Pure Dart video remuxer</strong></summary>
-
-- [ ] Pure Dart video remuxer:
-  - [ ] Convert various video formats into HLS
-  - [ ] No external dependencies (Dart-first approach)
-  - [ ] Container format parsing (MP4, MKV, WebM, etc.)
-  - [ ] HLS manifest generation (M3U8)
-  - [ ] Segment creation and packaging
-  - [ ] Benefits: Enable HLS streaming for non-HLS sources on web and platforms without native format support
-  - [ ] Use cases: Progressive MP4 → HLS conversion, format compatibility layer
-  - [ ] Note: CPU-intensive operation, consider performance implications
-  - [ ] Prerequisite: Container header parser (for stream positioning data)
 
 </details>
 

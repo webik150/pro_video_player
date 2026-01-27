@@ -139,6 +139,21 @@ enum SubtitleFormatEnum {
   ttml,
 }
 
+/// Codec support level.
+enum CodecSupportLevelEnum {
+  /// Codec is fully supported.
+  supported,
+
+  /// Codec is probably supported.
+  probablySupported,
+
+  /// Codec is not supported.
+  notSupported,
+
+  /// Support status is unknown.
+  unknown,
+}
+
 // ==================== Message Classes ====================
 
 /// Video source data passed to the platform.
@@ -214,6 +229,15 @@ class VideoPlayerOptionsMessage {
   /// Whether to auto-enter PiP when app goes to background.
   final bool autoEnterPipOnBackground;
 
+  /// The subtitle render mode for embedded subtitles.
+  final SubtitleRenderModeEnum? subtitleRenderMode;
+
+  /// Whether subtitles are enabled.
+  final bool? subtitlesEnabled;
+
+  /// Whether to show subtitles by default when available.
+  final bool? showSubtitlesByDefault;
+
   VideoPlayerOptionsMessage({
     required this.autoPlay,
     required this.looping,
@@ -231,6 +255,9 @@ class VideoPlayerOptionsMessage {
     this.maxBitrate,
     this.minBitrate,
     this.preferredAudioRendition,
+    this.subtitleRenderMode,
+    this.subtitlesEnabled,
+    this.showSubtitlesByDefault,
   });
 }
 
@@ -502,6 +529,49 @@ class ExternalSubtitleTrackMessage {
     required this.sourceType,
     required this.format,
     this.language,
+  });
+}
+
+/// Codec information for compatibility checking.
+class CodecInfoMessage {
+  /// Four character code (e.g., "avc1", "hvc1", "mp4a").
+  final String fourcc;
+
+  /// Human-readable codec name (e.g., "H.264", "HEVC", "AAC").
+  final String name;
+
+  /// Full codec string including profile and level.
+  final String? codecString;
+
+  /// MIME type for the codec (e.g., "video/mp4", "audio/mp4").
+  final String? mimeType;
+
+  CodecInfoMessage({required this.fourcc, required this.name, this.codecString, this.mimeType});
+}
+
+/// Result of checking codec compatibility.
+class CodecCompatibilityMessage {
+  /// The codec that was checked.
+  final CodecInfoMessage codec;
+
+  /// The level of support for this codec.
+  final CodecSupportLevelEnum supportLevel;
+
+  /// Human-readable message about the support status.
+  final String? message;
+
+  /// Minimum OS version required for this codec.
+  final String? minimumOsVersion;
+
+  /// Alternative codecs that are supported.
+  final List<String?>? alternativeCodecs;
+
+  CodecCompatibilityMessage({
+    required this.codec,
+    required this.supportLevel,
+    this.message,
+    this.minimumOsVersion,
+    this.alternativeCodecs,
   });
 }
 
@@ -808,6 +878,38 @@ abstract class ProVideoPlayerHostApi {
   /// Gets the current cast device.
   @async
   CastDeviceMessage? getCurrentCastDevice(int playerId);
+
+  // ==================== Codec Compatibility ====================
+
+  /// Checks if a specific codec is supported on this platform.
+  ///
+  /// Uses platform-specific APIs:
+  /// - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+  /// - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+  /// - Android: MediaCodecList.findDecoderForFormat()
+  ///
+  /// The [codec] parameter should include the fourcc and optionally
+  /// the full codec string for more accurate checking.
+  @async
+  CodecCompatibilityMessage checkCodecSupport(CodecInfoMessage codec);
+
+  /// Checks if multiple codecs are supported on this platform.
+  ///
+  /// More efficient than calling [checkCodecSupport] multiple times
+  /// as it may batch platform API calls.
+  @async
+  List<CodecCompatibilityMessage?> checkCodecsSupport(List<CodecInfoMessage?> codecs);
+
+  /// Gets a list of codecs that are guaranteed to be supported.
+  ///
+  /// Returns the platform's baseline supported codecs:
+  /// - Common video codecs (H.264, potentially HEVC)
+  /// - Common audio codecs (AAC, MP3)
+  ///
+  /// This can be used to suggest transcoding options when
+  /// a file contains unsupported codecs.
+  @async
+  List<String?> getSupportedCodecs();
 }
 
 /// Playback state enumeration.

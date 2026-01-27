@@ -194,6 +194,24 @@ enum class SubtitleFormatEnum(val raw: Int) {
   }
 }
 
+/** Codec support level. */
+enum class CodecSupportLevelEnum(val raw: Int) {
+  /** Codec is fully supported. */
+  SUPPORTED(0),
+  /** Codec is probably supported. */
+  PROBABLY_SUPPORTED(1),
+  /** Codec is not supported. */
+  NOT_SUPPORTED(2),
+  /** Support status is unknown. */
+  UNKNOWN(3);
+
+  companion object {
+    fun ofRaw(raw: Int): CodecSupportLevelEnum? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Playback state enumeration. */
 enum class PlaybackStateEnum(val raw: Int) {
   /** Player is uninitialized. */
@@ -301,7 +319,13 @@ data class VideoPlayerOptionsMessage (
   /** Whether to allow Picture-in-Picture mode (deprecated, use enablePip). */
   val allowPip: Boolean,
   /** Whether to auto-enter PiP when app goes to background. */
-  val autoEnterPipOnBackground: Boolean
+  val autoEnterPipOnBackground: Boolean,
+  /** The subtitle render mode for embedded subtitles. */
+  val subtitleRenderMode: SubtitleRenderModeEnum? = null,
+  /** Whether subtitles are enabled. */
+  val subtitlesEnabled: Boolean? = null,
+  /** Whether to show subtitles by default when available. */
+  val showSubtitlesByDefault: Boolean? = null
 )
  {
   companion object {
@@ -322,7 +346,10 @@ data class VideoPlayerOptionsMessage (
       val mixWithOthers = pigeonVar_list[13] as Boolean
       val allowPip = pigeonVar_list[14] as Boolean
       val autoEnterPipOnBackground = pigeonVar_list[15] as Boolean
-      return VideoPlayerOptionsMessage(autoPlay, looping, volume, playbackSpeed, startPosition, enablePip, enableBackgroundPlayback, preferredAudioLanguage, preferredSubtitleLanguage, maxBitrate, minBitrate, preferredAudioRendition, allowBackgroundPlayback, mixWithOthers, allowPip, autoEnterPipOnBackground)
+      val subtitleRenderMode = pigeonVar_list[16] as SubtitleRenderModeEnum?
+      val subtitlesEnabled = pigeonVar_list[17] as Boolean?
+      val showSubtitlesByDefault = pigeonVar_list[18] as Boolean?
+      return VideoPlayerOptionsMessage(autoPlay, looping, volume, playbackSpeed, startPosition, enablePip, enableBackgroundPlayback, preferredAudioLanguage, preferredSubtitleLanguage, maxBitrate, minBitrate, preferredAudioRendition, allowBackgroundPlayback, mixWithOthers, allowPip, autoEnterPipOnBackground, subtitleRenderMode, subtitlesEnabled, showSubtitlesByDefault)
     }
   }
   fun toList(): List<Any?> {
@@ -343,6 +370,9 @@ data class VideoPlayerOptionsMessage (
       mixWithOthers,
       allowPip,
       autoEnterPipOnBackground,
+      subtitleRenderMode,
+      subtitlesEnabled,
+      showSubtitlesByDefault,
     )
   }
 }
@@ -814,6 +844,80 @@ data class ExternalSubtitleTrackMessage (
 }
 
 /**
+ * Codec information for compatibility checking.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class CodecInfoMessage (
+  /** Four character code (e.g., "avc1", "hvc1", "mp4a"). */
+  val fourcc: String,
+  /** Human-readable codec name (e.g., "H.264", "HEVC", "AAC"). */
+  val name: String,
+  /** Full codec string including profile and level. */
+  val codecString: String? = null,
+  /** MIME type for the codec (e.g., "video/mp4", "audio/mp4"). */
+  val mimeType: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): CodecInfoMessage {
+      val fourcc = pigeonVar_list[0] as String
+      val name = pigeonVar_list[1] as String
+      val codecString = pigeonVar_list[2] as String?
+      val mimeType = pigeonVar_list[3] as String?
+      return CodecInfoMessage(fourcc, name, codecString, mimeType)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      fourcc,
+      name,
+      codecString,
+      mimeType,
+    )
+  }
+}
+
+/**
+ * Result of checking codec compatibility.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class CodecCompatibilityMessage (
+  /** The codec that was checked. */
+  val codec: CodecInfoMessage,
+  /** The level of support for this codec. */
+  val supportLevel: CodecSupportLevelEnum,
+  /** Human-readable message about the support status. */
+  val message: String? = null,
+  /** Minimum OS version required for this codec. */
+  val minimumOsVersion: String? = null,
+  /** Alternative codecs that are supported. */
+  val alternativeCodecs: List<String?>? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): CodecCompatibilityMessage {
+      val codec = pigeonVar_list[0] as CodecInfoMessage
+      val supportLevel = pigeonVar_list[1] as CodecSupportLevelEnum
+      val message = pigeonVar_list[2] as String?
+      val minimumOsVersion = pigeonVar_list[3] as String?
+      val alternativeCodecs = pigeonVar_list[4] as List<String?>?
+      return CodecCompatibilityMessage(codec, supportLevel, message, minimumOsVersion, alternativeCodecs)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      codec,
+      supportLevel,
+      message,
+      minimumOsVersion,
+      alternativeCodecs,
+    )
+  }
+}
+
+/**
  * Video player event data sent from the platform to Dart.
  *
  * This is a base class for all events. Specific event types will include
@@ -915,80 +1019,95 @@ private open class PigeonMessagesPigeonCodec : StandardMessageCodec() {
       }
       137.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PlaybackStateEnum.ofRaw(it.toInt())
+          CodecSupportLevelEnum.ofRaw(it.toInt())
         }
       }
       138.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          VideoSourceMessage.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          PlaybackStateEnum.ofRaw(it.toInt())
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          VideoPlayerOptionsMessage.fromList(it)
+          VideoSourceMessage.fromList(it)
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PlatformInfoMessage.fromList(it)
+          VideoPlayerOptionsMessage.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BatteryInfoMessage.fromList(it)
+          PlatformInfoMessage.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SubtitleTrackMessage.fromList(it)
+          BatteryInfoMessage.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          AudioTrackMessage.fromList(it)
+          SubtitleTrackMessage.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          VideoQualityTrackMessage.fromList(it)
+          AudioTrackMessage.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PipOptionsMessage.fromList(it)
+          VideoQualityTrackMessage.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PipActionMessage.fromList(it)
+          PipOptionsMessage.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CastDeviceMessage.fromList(it)
+          PipActionMessage.fromList(it)
         }
       }
       148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          VideoMetadataMessage.fromList(it)
+          CastDeviceMessage.fromList(it)
         }
       }
       149.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MediaMetadataMessage.fromList(it)
+          VideoMetadataMessage.fromList(it)
         }
       }
       150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SubtitleSourceMessage.fromList(it)
+          MediaMetadataMessage.fromList(it)
         }
       }
       151.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ExternalSubtitleTrackMessage.fromList(it)
+          SubtitleSourceMessage.fromList(it)
         }
       }
       152.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ExternalSubtitleTrackMessage.fromList(it)
+        }
+      }
+      153.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CodecInfoMessage.fromList(it)
+        }
+      }
+      154.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CodecCompatibilityMessage.fromList(it)
+        }
+      }
+      155.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           VideoPlayerEventMessage.fromList(it)
         }
@@ -1030,68 +1149,80 @@ private open class PigeonMessagesPigeonCodec : StandardMessageCodec() {
         stream.write(136)
         writeValue(stream, value.raw)
       }
-      is PlaybackStateEnum -> {
+      is CodecSupportLevelEnum -> {
         stream.write(137)
         writeValue(stream, value.raw)
       }
-      is VideoSourceMessage -> {
+      is PlaybackStateEnum -> {
         stream.write(138)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw)
       }
-      is VideoPlayerOptionsMessage -> {
+      is VideoSourceMessage -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is PlatformInfoMessage -> {
+      is VideoPlayerOptionsMessage -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is BatteryInfoMessage -> {
+      is PlatformInfoMessage -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is SubtitleTrackMessage -> {
+      is BatteryInfoMessage -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is AudioTrackMessage -> {
+      is SubtitleTrackMessage -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is VideoQualityTrackMessage -> {
+      is AudioTrackMessage -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is PipOptionsMessage -> {
+      is VideoQualityTrackMessage -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is PipActionMessage -> {
+      is PipOptionsMessage -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is CastDeviceMessage -> {
+      is PipActionMessage -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is VideoMetadataMessage -> {
+      is CastDeviceMessage -> {
         stream.write(148)
         writeValue(stream, value.toList())
       }
-      is MediaMetadataMessage -> {
+      is VideoMetadataMessage -> {
         stream.write(149)
         writeValue(stream, value.toList())
       }
-      is SubtitleSourceMessage -> {
+      is MediaMetadataMessage -> {
         stream.write(150)
         writeValue(stream, value.toList())
       }
-      is ExternalSubtitleTrackMessage -> {
+      is SubtitleSourceMessage -> {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is VideoPlayerEventMessage -> {
+      is ExternalSubtitleTrackMessage -> {
         stream.write(152)
+        writeValue(stream, value.toList())
+      }
+      is CodecInfoMessage -> {
+        stream.write(153)
+        writeValue(stream, value.toList())
+      }
+      is CodecCompatibilityMessage -> {
+        stream.write(154)
+        writeValue(stream, value.toList())
+      }
+      is VideoPlayerEventMessage -> {
+        stream.write(155)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1253,6 +1384,36 @@ interface ProVideoPlayerHostApi {
   fun getCastState(playerId: Long, callback: (Result<CastStateEnum>) -> Unit)
   /** Gets the current cast device. */
   fun getCurrentCastDevice(playerId: Long, callback: (Result<CastDeviceMessage?>) -> Unit)
+  /**
+   * Checks if a specific codec is supported on this platform.
+   *
+   * Uses platform-specific APIs:
+   * - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+   * - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+   * - Android: MediaCodecList.findDecoderForFormat()
+   *
+   * The [codec] parameter should include the fourcc and optionally
+   * the full codec string for more accurate checking.
+   */
+  fun checkCodecSupport(codec: CodecInfoMessage, callback: (Result<CodecCompatibilityMessage>) -> Unit)
+  /**
+   * Checks if multiple codecs are supported on this platform.
+   *
+   * More efficient than calling [checkCodecSupport] multiple times
+   * as it may batch platform API calls.
+   */
+  fun checkCodecsSupport(codecs: List<CodecInfoMessage?>, callback: (Result<List<CodecCompatibilityMessage?>>) -> Unit)
+  /**
+   * Gets a list of codecs that are guaranteed to be supported.
+   *
+   * Returns the platform's baseline supported codecs:
+   * - Common video codecs (H.264, potentially HEVC)
+   * - Common audio codecs (AAC, MP3)
+   *
+   * This can be used to suggest transcoding options when
+   * a file contains unsupported codecs.
+   */
+  fun getSupportedCodecs(callback: (Result<List<String?>>) -> Unit)
 
   companion object {
     /** The codec used by ProVideoPlayerHostApi. */
@@ -2564,6 +2725,64 @@ interface ProVideoPlayerHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecSupport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val codecArg = args[0] as CodecInfoMessage
+            api.checkCodecSupport(codecArg) { result: Result<CodecCompatibilityMessage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecsSupport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val codecsArg = args[0] as List<CodecInfoMessage?>
+            api.checkCodecsSupport(codecsArg) { result: Result<List<CodecCompatibilityMessage?>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.getSupportedCodecs$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getSupportedCodecs{ result: Result<List<String?>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }
@@ -2608,7 +2827,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when an error occurs during playback. */
@@ -2626,7 +2845,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when video metadata is extracted. */
@@ -2644,7 +2863,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when playback completes. */
@@ -2662,7 +2881,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when a PiP action is triggered by the user. */
@@ -2680,7 +2899,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when cast state changes. */
@@ -2698,7 +2917,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when subtitle tracks change. */
@@ -2716,7 +2935,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** Called when audio tracks change. */
@@ -2734,7 +2953,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /**
@@ -2757,7 +2976,7 @@ class ProVideoPlayerFlutterApi(private val binaryMessenger: BinaryMessenger, pri
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      }
+      } 
     }
   }
 }

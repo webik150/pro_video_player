@@ -100,8 +100,20 @@ class _SubtitleOverlayState extends State<SubtitleOverlay> {
 
         // Check if this is an embedded track with a current cue to render
         if (selectedTrack is! ExternalSubtitleTrack) {
-          // For embedded tracks, use the currentEmbeddedCue from the value
-          // This is populated when renderEmbeddedSubtitlesInFlutter is enabled
+          // For embedded tracks in Flutter mode, use extracted cues if available
+          final extractedCues = value.embeddedSubtitleCues;
+          if (extractedCues != null && extractedCues.isNotEmpty) {
+            // Use extracted cues (same logic as external tracks)
+            final position = value.position + value.subtitleOffset;
+            final activeCues = _findActiveCues(extractedCues, position);
+            if (activeCues.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return _buildSubtitlesWidget(activeCues, playerHeight);
+          }
+
+          // Fall back to currentEmbeddedCue (native-pushed cue)
+          // This is populated when native player streams cues to Flutter
           final embeddedCue = value.currentEmbeddedCue;
           if (embeddedCue == null) {
             return const SizedBox.shrink();

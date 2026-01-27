@@ -51,9 +51,7 @@ mixin ConfigurationMixin on ProVideoPlayerControllerBase {
   /// - **Android**: `true` (requires proper manifest configuration)
   /// - **macOS**: Always `true`
   /// - **Web/Windows/Linux**: `false`
-  Future<bool> isBackgroundPlaybackSupported() async {
-    return services.configurationManager.isBackgroundPlaybackSupported();
-  }
+  Future<bool> isBackgroundPlaybackSupported() async => services.configurationManager.isBackgroundPlaybackSupported();
 
   /// Returns whether background playback is available for this player.
   ///

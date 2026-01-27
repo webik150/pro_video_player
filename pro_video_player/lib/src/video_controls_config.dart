@@ -73,20 +73,18 @@ class ButtonsConfig {
     bool? showScalingModeButton,
     bool? showOrientationLockButton,
     bool? showSkipButtons,
-  }) {
-    return ButtonsConfig(
-      showFullscreenButton: showFullscreenButton ?? this.showFullscreenButton,
-      showPipButton: showPipButton ?? this.showPipButton,
-      showBackgroundPlaybackButton: showBackgroundPlaybackButton ?? this.showBackgroundPlaybackButton,
-      showSubtitleButton: showSubtitleButton ?? this.showSubtitleButton,
-      showAudioButton: showAudioButton ?? this.showAudioButton,
-      showQualityButton: showQualityButton ?? this.showQualityButton,
-      showSpeedButton: showSpeedButton ?? this.showSpeedButton,
-      showScalingModeButton: showScalingModeButton ?? this.showScalingModeButton,
-      showOrientationLockButton: showOrientationLockButton ?? this.showOrientationLockButton,
-      showSkipButtons: showSkipButtons ?? this.showSkipButtons,
-    );
-  }
+  }) => ButtonsConfig(
+    showFullscreenButton: showFullscreenButton ?? this.showFullscreenButton,
+    showPipButton: showPipButton ?? this.showPipButton,
+    showBackgroundPlaybackButton: showBackgroundPlaybackButton ?? this.showBackgroundPlaybackButton,
+    showSubtitleButton: showSubtitleButton ?? this.showSubtitleButton,
+    showAudioButton: showAudioButton ?? this.showAudioButton,
+    showQualityButton: showQualityButton ?? this.showQualityButton,
+    showSpeedButton: showSpeedButton ?? this.showSpeedButton,
+    showScalingModeButton: showScalingModeButton ?? this.showScalingModeButton,
+    showOrientationLockButton: showOrientationLockButton ?? this.showOrientationLockButton,
+    showSkipButtons: showSkipButtons ?? this.showSkipButtons,
+  );
 }
 
 /// Configuration for gesture controls in video player.
@@ -158,19 +156,17 @@ class GestureConfig {
     Duration? skipDuration,
     double? seekSecondsPerInch,
     ValueChanged<double>? onBrightnessChanged,
-  }) {
-    return GestureConfig(
-      enableGestures: enableGestures ?? this.enableGestures,
-      enableDoubleTapSeek: enableDoubleTapSeek ?? this.enableDoubleTapSeek,
-      enableVolumeGesture: enableVolumeGesture ?? this.enableVolumeGesture,
-      enableBrightnessGesture: enableBrightnessGesture ?? this.enableBrightnessGesture,
-      enableSeekGesture: enableSeekGesture ?? this.enableSeekGesture,
-      enablePlaybackSpeedGesture: enablePlaybackSpeedGesture ?? this.enablePlaybackSpeedGesture,
-      skipDuration: skipDuration ?? this.skipDuration,
-      seekSecondsPerInch: seekSecondsPerInch ?? this.seekSecondsPerInch,
-      onBrightnessChanged: onBrightnessChanged ?? this.onBrightnessChanged,
-    );
-  }
+  }) => GestureConfig(
+    enableGestures: enableGestures ?? this.enableGestures,
+    enableDoubleTapSeek: enableDoubleTapSeek ?? this.enableDoubleTapSeek,
+    enableVolumeGesture: enableVolumeGesture ?? this.enableVolumeGesture,
+    enableBrightnessGesture: enableBrightnessGesture ?? this.enableBrightnessGesture,
+    enableSeekGesture: enableSeekGesture ?? this.enableSeekGesture,
+    enablePlaybackSpeedGesture: enablePlaybackSpeedGesture ?? this.enablePlaybackSpeedGesture,
+    skipDuration: skipDuration ?? this.skipDuration,
+    seekSecondsPerInch: seekSecondsPerInch ?? this.seekSecondsPerInch,
+    onBrightnessChanged: onBrightnessChanged ?? this.onBrightnessChanged,
+  );
 }
 
 /// Configuration for controls behavior (auto-hide, keyboard shortcuts, etc.).
@@ -228,17 +224,15 @@ class ControlsBehaviorConfig {
     bool? enableContextMenu,
     bool? minimalToolbarOnDesktop,
     bool? enableSeekBarHoverPreview,
-  }) {
-    return ControlsBehaviorConfig(
-      autoHide: autoHide ?? this.autoHide,
-      autoHideDuration: autoHideDuration ?? this.autoHideDuration,
-      enableKeyboardShortcuts: enableKeyboardShortcuts ?? this.enableKeyboardShortcuts,
-      keyboardSeekDuration: keyboardSeekDuration ?? this.keyboardSeekDuration,
-      enableContextMenu: enableContextMenu ?? this.enableContextMenu,
-      minimalToolbarOnDesktop: minimalToolbarOnDesktop ?? this.minimalToolbarOnDesktop,
-      enableSeekBarHoverPreview: enableSeekBarHoverPreview ?? this.enableSeekBarHoverPreview,
-    );
-  }
+  }) => ControlsBehaviorConfig(
+    autoHide: autoHide ?? this.autoHide,
+    autoHideDuration: autoHideDuration ?? this.autoHideDuration,
+    enableKeyboardShortcuts: enableKeyboardShortcuts ?? this.enableKeyboardShortcuts,
+    keyboardSeekDuration: keyboardSeekDuration ?? this.keyboardSeekDuration,
+    enableContextMenu: enableContextMenu ?? this.enableContextMenu,
+    minimalToolbarOnDesktop: minimalToolbarOnDesktop ?? this.minimalToolbarOnDesktop,
+    enableSeekBarHoverPreview: enableSeekBarHoverPreview ?? this.enableSeekBarHoverPreview,
+  );
 }
 
 /// Configuration for playback options (speed, scaling, live scrubbing).
@@ -279,13 +273,11 @@ class PlaybackOptionsConfig {
     List<double>? speedOptions,
     List<VideoScalingMode>? scalingModeOptions,
     LiveScrubbingMode? liveScrubbingMode,
-  }) {
-    return PlaybackOptionsConfig(
-      speedOptions: speedOptions ?? this.speedOptions,
-      scalingModeOptions: scalingModeOptions ?? this.scalingModeOptions,
-      liveScrubbingMode: liveScrubbingMode ?? this.liveScrubbingMode,
-    );
-  }
+  }) => PlaybackOptionsConfig(
+    speedOptions: speedOptions ?? this.speedOptions,
+    scalingModeOptions: scalingModeOptions ?? this.scalingModeOptions,
+    liveScrubbingMode: liveScrubbingMode ?? this.liveScrubbingMode,
+  );
 }
 
 /// Configuration for fullscreen behavior.
@@ -323,11 +315,9 @@ class FullscreenConfig {
     FullscreenOrientation? orientation,
     VoidCallback? onEnterFullscreen,
     VoidCallback? onExitFullscreen,
-  }) {
-    return FullscreenConfig(
-      orientation: orientation ?? this.orientation,
-      onEnterFullscreen: onEnterFullscreen ?? this.onEnterFullscreen,
-      onExitFullscreen: onExitFullscreen ?? this.onExitFullscreen,
-    );
-  }
+  }) => FullscreenConfig(
+    orientation: orientation ?? this.orientation,
+    onEnterFullscreen: onEnterFullscreen ?? this.onEnterFullscreen,
+    onExitFullscreen: onExitFullscreen ?? this.onExitFullscreen,
+  );
 }

@@ -21,9 +21,9 @@ void main() {
       );
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('initialization', () {
@@ -230,7 +230,7 @@ void main() {
         await manager.updateState(isPlaying: true, isPipActive: false, isInBackground: false);
         expect(mockWakeLock.isLocked, isTrue);
 
-        manager.setPreventScreenSleep(false);
+        await manager.setPreventScreenSleep(false);
 
         expect(manager.preventScreenSleep, isFalse);
         expect(mockWakeLock.isLocked, isFalse); // Should release

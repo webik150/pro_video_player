@@ -435,4 +435,206 @@ class ProVideoPlayerWeb extends ProVideoPlayerPlatform {
     }
     return player;
   }
+
+  // ==================== Codec Compatibility ====================
+
+  @override
+  Future<CodecCompatibility> checkCodecSupport(CodecInfo codec) async {
+    verboseLog('checkCodecSupport() called for codec: ${codec.name} (${codec.fourcc})', tag: 'Plugin');
+
+    // Build MIME type for checking
+    final mimeType = _buildMimeType(codec);
+    if (mimeType == null) {
+      return CodecCompatibility(
+        codec: codec,
+        supportLevel: CodecSupportLevel.unknown,
+        message: 'Unable to determine MIME type for codec ${codec.fourcc}',
+      );
+    }
+
+    // Check using MediaSource.isTypeSupported first (more reliable)
+    final mediaSourceSupported = _checkMediaSourceSupport(mimeType);
+
+    // Also check using canPlayType for broader coverage
+    final canPlayResult = _checkCanPlayType(mimeType);
+
+    // Determine support level
+    final CodecSupportLevel supportLevel;
+    String? message;
+
+    if (mediaSourceSupported) {
+      supportLevel = CodecSupportLevel.supported;
+      message = 'MediaSource.isTypeSupported returned true';
+    } else if (canPlayResult == 'probably') {
+      supportLevel = CodecSupportLevel.supported;
+      message = 'canPlayType returned "probably"';
+    } else if (canPlayResult == 'maybe') {
+      supportLevel = CodecSupportLevel.probablySupported;
+      message = 'canPlayType returned "maybe" - support not guaranteed';
+    } else {
+      supportLevel = CodecSupportLevel.notSupported;
+      message = 'Codec not supported on this browser';
+    }
+
+    // Suggest alternatives for unsupported codecs
+    final alternatives = supportLevel == CodecSupportLevel.notSupported ? _suggestAlternatives(codec) : <String>[];
+
+    return CodecCompatibility(
+      codec: codec.copyWith(mimeType: mimeType),
+      supportLevel: supportLevel,
+      message: message,
+      alternativeCodecs: alternatives,
+    );
+  }
+
+  @override
+  Future<List<CodecCompatibility>> checkCodecsSupport(List<CodecInfo> codecs) async {
+    verboseLog('checkCodecsSupport() called for ${codecs.length} codecs', tag: 'Plugin');
+
+    final results = <CodecCompatibility>[];
+    for (final codec in codecs) {
+      results.add(await checkCodecSupport(codec));
+    }
+    return results;
+  }
+
+  @override
+  Future<List<String>> getSupportedCodecs() async {
+    verboseLog('getSupportedCodecs() called', tag: 'Plugin');
+
+    // Return list of commonly supported codecs on modern browsers
+    final supportedCodecs = <String>[];
+
+    // Check common video codecs
+    final videoCodecs = [
+      ('H.264', 'video/mp4; codecs="avc1.42E01E"'),
+      ('H.264 High', 'video/mp4; codecs="avc1.640028"'),
+      ('VP8', 'video/webm; codecs="vp8"'),
+      ('VP9', 'video/webm; codecs="vp09.00.10.08"'),
+      ('AV1', 'video/mp4; codecs="av01.0.05M.08"'),
+      ('HEVC', 'video/mp4; codecs="hvc1.1.6.L93.B0"'),
+    ];
+
+    // Check common audio codecs
+    final audioCodecs = [
+      ('AAC', 'audio/mp4; codecs="mp4a.40.2"'),
+      ('MP3', 'audio/mpeg'),
+      ('Opus', 'audio/webm; codecs="opus"'),
+      ('Vorbis', 'audio/webm; codecs="vorbis"'),
+      ('FLAC', 'audio/flac'),
+      ('AC-3', 'audio/mp4; codecs="ac-3"'),
+      ('E-AC-3', 'audio/mp4; codecs="ec-3"'),
+    ];
+
+    for (final (name, mimeType) in videoCodecs) {
+      if (_checkMediaSourceSupport(mimeType) || _checkCanPlayType(mimeType) != '') {
+        supportedCodecs.add(name);
+      }
+    }
+
+    for (final (name, mimeType) in audioCodecs) {
+      if (_checkMediaSourceSupport(mimeType) || _checkCanPlayType(mimeType) != '') {
+        supportedCodecs.add(name);
+      }
+    }
+
+    verboseLog('Supported codecs: ${supportedCodecs.join(", ")}', tag: 'Plugin');
+    return supportedCodecs;
+  }
+
+  /// Builds a MIME type string for codec compatibility checking.
+  String? _buildMimeType(CodecInfo codec) {
+    // If codec already has a mimeType, use it
+    if (codec.mimeType != null && codec.mimeType!.isNotEmpty) {
+      return codec.mimeType;
+    }
+
+    // Try to build MIME type from fourcc and codecString
+    final fourcc = codec.fourcc.toLowerCase();
+
+    // Video codecs
+    if (codec.isVideoCodec) {
+      final codecString = codec.codecString ?? fourcc;
+      return switch (fourcc) {
+        'avc1' || 'avc3' => 'video/mp4; codecs="$codecString"',
+        'hvc1' || 'hev1' => 'video/mp4; codecs="$codecString"',
+        'vp08' => 'video/webm; codecs="vp8"',
+        'vp09' => 'video/webm; codecs="${codec.codecString ?? "vp09.00.10.08"}"',
+        'av01' => 'video/mp4; codecs="${codec.codecString ?? "av01.0.05M.08"}"',
+        'mp4v' => 'video/mp4; codecs="mp4v.20.3"',
+        _ => 'video/mp4; codecs="$codecString"',
+      };
+    }
+
+    // Audio codecs
+    if (codec.isAudioCodec) {
+      final codecString = codec.codecString ?? fourcc;
+      return switch (fourcc) {
+        'mp4a' => 'audio/mp4; codecs="${codec.codecString ?? "mp4a.40.2"}"',
+        'ac-3' => 'audio/mp4; codecs="ac-3"',
+        'ec-3' => 'audio/mp4; codecs="ec-3"',
+        'opus' => 'audio/webm; codecs="opus"',
+        'flac' => 'audio/flac',
+        'alac' => 'audio/mp4; codecs="alac"',
+        'mp3 ' || '.mp3' => 'audio/mpeg',
+        _ => 'audio/mp4; codecs="$codecString"',
+      };
+    }
+
+    // Subtitle codecs - generally supported if browser supports video
+    if (codec.isSubtitleCodec) {
+      return 'text/vtt'; // VTT is universally supported
+    }
+
+    return null;
+  }
+
+  /// Checks MediaSource.isTypeSupported for the given MIME type.
+  bool _checkMediaSourceSupport(String mimeType) {
+    try {
+      return web.MediaSource.isTypeSupported(mimeType);
+    } catch (e) {
+      verboseLog('MediaSource.isTypeSupported check failed: $e', tag: 'Plugin');
+      return false;
+    }
+  }
+
+  /// Checks canPlayType on a video element for the given MIME type.
+  String _checkCanPlayType(String mimeType) {
+    try {
+      final video = web.document.createElement('video') as web.HTMLVideoElement;
+      final result = video.canPlayType(mimeType);
+      return result;
+    } catch (e) {
+      verboseLog('canPlayType check failed: $e', tag: 'Plugin');
+      return '';
+    }
+  }
+
+  /// Suggests alternative codecs when a codec is not supported.
+  List<String> _suggestAlternatives(CodecInfo codec) {
+    final fourcc = codec.fourcc.toLowerCase();
+
+    // Suggest alternatives based on codec type
+    if (codec.isVideoCodec) {
+      return switch (fourcc) {
+        'hvc1' || 'hev1' => ['H.264', 'VP9'], // HEVC → H.264 or VP9
+        'av01' => ['H.264', 'VP9', 'HEVC'], // AV1 → H.264, VP9, or HEVC
+        'vp09' => ['H.264', 'VP8'], // VP9 → H.264 or VP8
+        'vp08' => ['H.264'], // VP8 → H.264
+        _ => ['H.264'], // Default to H.264
+      };
+    }
+
+    if (codec.isAudioCodec) {
+      return switch (fourcc) {
+        'ac-3' || 'ec-3' => ['AAC', 'Opus'], // AC-3/E-AC-3 → AAC or Opus
+        'alac' => ['AAC', 'FLAC'], // ALAC → AAC or FLAC
+        'opus' => ['AAC', 'Vorbis'], // Opus → AAC or Vorbis
+        _ => ['AAC'], // Default to AAC
+      };
+    }
+
+    return [];
+  }
 }

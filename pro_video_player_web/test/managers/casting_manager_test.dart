@@ -21,9 +21,9 @@ void main() {
       manager = CastingManager(emitEvent: fixture.emitEvent, videoElement: fixture.videoElement, allowCasting: true);
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('initialization', () {

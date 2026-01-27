@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 width: 40,
                 height: 40,
-                child: Container(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: demo.color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
@@ -654,7 +654,7 @@ class _DemoItem extends StatelessWidget {
               SizedBox(
                 width: 48,
                 height: 48,
-                child: Container(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),

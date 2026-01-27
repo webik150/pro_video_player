@@ -78,6 +78,7 @@ class InitializationCoordinator {
     required VideoSource source,
     required VideoPlayerOptions options,
     required void Function(VideoSource) setSource,
+    required VideoSource? Function() getSource,
     required void Function(VideoPlayerOptions) setOptions,
     required void Function(int?) setPlayerId,
   }) async {
@@ -135,6 +136,7 @@ class InitializationCoordinator {
         setRetrying: setRetrying,
         setPlayerId: setPlayerId,
         setSource: setSource,
+        getSource: getSource,
         ensureInitialized: ensureInitialized,
         onRetry: onRetry,
         onPlay: onPlay,

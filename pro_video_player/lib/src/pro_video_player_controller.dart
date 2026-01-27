@@ -231,6 +231,7 @@ class ProVideoPlayerController extends ProVideoPlayerControllerBase
       source: effectiveSource,
       options: effectiveOptions,
       setSource: (s) => _source = s,
+      getSource: () => _source,
       setOptions: (o) => _options = o,
       setPlayerId: (id) => _playerId = id,
     );
@@ -280,6 +281,7 @@ class ProVideoPlayerController extends ProVideoPlayerControllerBase
       setRetrying: ({required isRetrying}) => _isRetrying = isRetrying,
       setPlayerId: (id) => _playerId = id,
       setSource: (s) => _source = s,
+      getSource: () => _source,
       ensureInitialized: _ensureInitialized,
       onRetry: _performRetryPlayback,
       onPlay: play,

@@ -310,20 +310,20 @@ class VideoPlayerOptions {
   ///
   /// - [SubtitleRenderMode.native] - Platform renders subtitles (iOS/Android/Web native styling)
   /// - [SubtitleRenderMode.flutter] - Flutter renders subtitles via `SubtitleOverlay` (custom styling)
-  /// - [SubtitleRenderMode.auto] - Automatically select based on controls mode (default)
+  /// - [SubtitleRenderMode.auto] - Defaults to Flutter rendering (default)
   ///
   /// ## Auto Mode Behavior
   ///
-  /// When set to `auto` (the default), subtitles are rendered natively by the
-  /// platform for all layout modes. This provides platform-native subtitle styling
-  /// by default. To use Flutter rendering for custom styling, explicitly call:
+  /// When set to `auto` (the default), subtitles are rendered by Flutter's
+  /// SubtitleOverlay widget, providing customizable styling and consistent
+  /// appearance across all platforms. To use native platform rendering, call:
   /// ```dart
-  /// await controller.setSubtitleRenderMode(SubtitleRenderMode.flutter);
+  /// await controller.setSubtitleRenderMode(SubtitleRenderMode.native);
   /// ```
   ///
   /// ## Flutter Rendering Benefits
   ///
-  /// When using `SubtitleRenderMode.flutter`:
+  /// When using `SubtitleRenderMode.flutter` or `auto`:
   /// - Subtitles appear independently of layout mode (work with native controls, no controls, etc.)
   /// - Customizable styling via `SubtitleStyle` (font, size, color, position, etc.)
   /// - Consistent appearance across all platforms

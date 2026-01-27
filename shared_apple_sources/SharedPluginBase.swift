@@ -422,7 +422,18 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
     }
 
     func setSubtitleRenderMode(playerId: Int64, mode: SubtitleRenderModeEnum, completion: @escaping (Result<Void, Error>) -> Void) {
-        // Subtitle render mode is primarily handled on Dart side
+        guard let player = players[Int(playerId)] else {
+            completion(.failure(PigeonError(code: "INVALID_PLAYER", message: "Player \(playerId) not found", details: nil)))
+            return
+        }
+
+        let modeString: String = switch mode {
+        case .native: "native"
+        case .flutter: "flutter"
+        case .auto: "auto"
+        }
+
+        player.setSubtitleRenderMode(modeString)
         completion(.success(()))
     }
 
@@ -1015,6 +1026,234 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
         #endif
     }
 
+    // MARK: - Codec Compatibility
+
+    func checkCodecSupport(codec: CodecInfoMessage, completion: @escaping (Result<CodecCompatibilityMessage, Error>) -> Void) {
+        verboseLog("checkCodecSupport() called for codec: \(codec.name) (\(codec.fourcc))", tag: "Plugin")
+
+        // Build MIME type for checking
+        guard let mimeType = buildMimeType(from: codec) else {
+            let result = CodecCompatibilityMessage(
+                codec: codec,
+                supportLevel: .unknown,
+                message: "Unable to determine MIME type for codec \(codec.fourcc)",
+                minimumOsVersion: nil,
+                alternativeCodecs: nil
+            )
+            completion(.success(result))
+            return
+        }
+
+        // Check using AVURLAsset.isPlayableExtendedMIMEType
+        let isPlayable = AVURLAsset.isPlayableExtendedMIMEType(mimeType)
+
+        let supportLevel: CodecSupportLevelEnum
+        var message: String?
+        var alternativeCodecs: [String?]?
+
+        if isPlayable {
+            supportLevel = .supported
+            message = "AVURLAsset.isPlayableExtendedMIMEType returned true"
+        } else {
+            supportLevel = .notSupported
+            message = "Codec not supported on this device"
+            alternativeCodecs = suggestAlternatives(for: codec)
+        }
+
+        // Check minimum OS version requirements for specific codecs
+        let minimumOsVersion = getMinimumOsVersion(for: codec)
+
+        let result = CodecCompatibilityMessage(
+            codec: CodecInfoMessage(
+                fourcc: codec.fourcc,
+                name: codec.name,
+                codecString: codec.codecString,
+                mimeType: mimeType
+            ),
+            supportLevel: supportLevel,
+            message: message,
+            minimumOsVersion: minimumOsVersion,
+            alternativeCodecs: alternativeCodecs
+        )
+        completion(.success(result))
+    }
+
+    func checkCodecsSupport(codecs: [CodecInfoMessage?], completion: @escaping (Result<[CodecCompatibilityMessage?], Error>) -> Void) {
+        verboseLog("checkCodecsSupport() called for \(codecs.count) codecs", tag: "Plugin")
+
+        var results: [CodecCompatibilityMessage?] = []
+        let dispatchGroup = DispatchGroup()
+
+        for codec in codecs {
+            guard let codec = codec else {
+                results.append(nil)
+                continue
+            }
+
+            dispatchGroup.enter()
+            checkCodecSupport(codec: codec) { result in
+                switch result {
+                case .success(let compatibility):
+                    results.append(compatibility)
+                case .failure:
+                    results.append(nil)
+                }
+                dispatchGroup.leave()
+            }
+        }
+
+        dispatchGroup.notify(queue: .main) {
+            completion(.success(results))
+        }
+    }
+
+    func getSupportedCodecs(completion: @escaping (Result<[String?], Error>) -> Void) {
+        verboseLog("getSupportedCodecs() called", tag: "Plugin")
+
+        // List of common codecs to check
+        let codecsToCheck: [(name: String, mimeType: String)] = [
+            // Video codecs
+            ("H.264", "video/mp4; codecs=\"avc1.42E01E\""),
+            ("H.264 High", "video/mp4; codecs=\"avc1.640028\""),
+            ("HEVC", "video/mp4; codecs=\"hvc1.1.6.L93.B0\""),
+            ("VP9", "video/webm; codecs=\"vp09.00.10.08\""),
+            ("AV1", "video/mp4; codecs=\"av01.0.05M.08\""),
+            // Audio codecs
+            ("AAC", "audio/mp4; codecs=\"mp4a.40.2\""),
+            ("MP3", "audio/mpeg"),
+            ("AC-3", "audio/mp4; codecs=\"ac-3\""),
+            ("E-AC-3", "audio/mp4; codecs=\"ec-3\""),
+            ("ALAC", "audio/mp4; codecs=\"alac\""),
+            ("FLAC", "audio/flac")
+        ]
+
+        var supportedCodecs: [String?] = []
+
+        for (name, mimeType) in codecsToCheck {
+            if AVURLAsset.isPlayableExtendedMIMEType(mimeType) {
+                supportedCodecs.append(name)
+            }
+        }
+
+        verboseLog("Supported codecs: \(supportedCodecs.compactMap { $0 }.joined(separator: ", "))", tag: "Plugin")
+        completion(.success(supportedCodecs))
+    }
+
+    /// Builds a MIME type string for codec compatibility checking.
+    private func buildMimeType(from codec: CodecInfoMessage) -> String? {
+        // If codec already has a mimeType, use it
+        if let mimeType = codec.mimeType, !mimeType.isEmpty {
+            return mimeType
+        }
+
+        let fourcc = codec.fourcc.lowercased()
+        let codecString = codec.codecString ?? fourcc
+
+        // Video codecs
+        switch fourcc {
+        case "avc1", "avc3":
+            return "video/mp4; codecs=\"\(codecString)\""
+        case "hvc1", "hev1":
+            return "video/mp4; codecs=\"\(codecString)\""
+        case "vp08":
+            return "video/webm; codecs=\"vp8\""
+        case "vp09":
+            let cs = codec.codecString ?? "vp09.00.10.08"
+            return "video/webm; codecs=\"\(cs)\""
+        case "av01":
+            let cs = codec.codecString ?? "av01.0.05M.08"
+            return "video/mp4; codecs=\"\(cs)\""
+        case "mp4v":
+            return "video/mp4; codecs=\"mp4v.20.3\""
+        default:
+            break
+        }
+
+        // Audio codecs
+        switch fourcc {
+        case "mp4a":
+            let cs = codec.codecString ?? "mp4a.40.2"
+            return "audio/mp4; codecs=\"\(cs)\""
+        case "ac-3":
+            return "audio/mp4; codecs=\"ac-3\""
+        case "ec-3":
+            return "audio/mp4; codecs=\"ec-3\""
+        case "opus":
+            return "audio/webm; codecs=\"opus\""
+        case "flac":
+            return "audio/flac"
+        case "alac":
+            return "audio/mp4; codecs=\"alac\""
+        case "mp3 ", ".mp3":
+            return "audio/mpeg"
+        default:
+            break
+        }
+
+        // For unknown codecs, try to build a generic MIME type
+        return nil
+    }
+
+    /// Suggests alternative codecs when a codec is not supported.
+    private func suggestAlternatives(for codec: CodecInfoMessage) -> [String?] {
+        let fourcc = codec.fourcc.lowercased()
+
+        // Video codec alternatives
+        switch fourcc {
+        case "hvc1", "hev1":
+            return ["H.264", "VP9"]
+        case "av01":
+            return ["H.264", "VP9", "HEVC"]
+        case "vp09":
+            return ["H.264", "VP8"]
+        case "vp08":
+            return ["H.264"]
+        default:
+            break
+        }
+
+        // Audio codec alternatives
+        switch fourcc {
+        case "ac-3", "ec-3":
+            return ["AAC", "MP3"]
+        case "alac":
+            return ["AAC", "FLAC"]
+        case "opus":
+            return ["AAC", "MP3"]
+        default:
+            break
+        }
+
+        return []
+    }
+
+    /// Returns the minimum OS version required for a specific codec.
+    private func getMinimumOsVersion(for codec: CodecInfoMessage) -> String? {
+        let fourcc = codec.fourcc.lowercased()
+
+        #if os(iOS)
+        switch fourcc {
+        case "av01":
+            return "16.0" // AV1 requires iOS 16+
+        case "hvc1", "hev1":
+            return "11.0" // HEVC requires iOS 11+
+        default:
+            return nil
+        }
+        #elseif os(macOS)
+        switch fourcc {
+        case "av01":
+            return "13.0" // AV1 requires macOS 13+
+        case "hvc1", "hev1":
+            return "10.13" // HEVC requires macOS 10.13+
+        default:
+            return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+
     // MARK: - Battery Monitoring
 
     private func setupBatteryMonitoring() {
@@ -1120,7 +1359,7 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
     }
 
     private func convertPlayerOptionsToDict(_ options: VideoPlayerOptionsMessage) -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "autoPlay": options.autoPlay,
             "looping": options.looping,
             "volume": options.volume,
@@ -1130,6 +1369,31 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
             "allowPip": options.allowPip,
             "autoEnterPipOnBackground": options.autoEnterPipOnBackground
         ]
+        // Add subtitle options if present
+        if let mode = options.subtitleRenderMode {
+            dict["subtitleRenderMode"] = convertSubtitleRenderModeToString(mode)
+        }
+        if let enabled = options.subtitlesEnabled {
+            dict["subtitlesEnabled"] = enabled
+        }
+        if let showByDefault = options.showSubtitlesByDefault {
+            dict["showSubtitlesByDefault"] = showByDefault
+        }
+        if let language = options.preferredSubtitleLanguage {
+            dict["preferredSubtitleLanguage"] = language
+        }
+        return dict
+    }
+
+    private func convertSubtitleRenderModeToString(_ mode: SubtitleRenderModeEnum) -> String {
+        switch mode {
+        case .auto:
+            return "auto"
+        case .native:
+            return "native"
+        case .flutter:
+            return "flutter"
+        }
     }
 
     private func convertScalingModeToString(_ mode: VideoScalingModeEnum) -> String {

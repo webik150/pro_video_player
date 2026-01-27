@@ -165,6 +165,18 @@ enum SubtitleFormatEnum: Int {
   case ttml = 4
 }
 
+/// Codec support level.
+enum CodecSupportLevelEnum: Int {
+  /// Codec is fully supported.
+  case supported = 0
+  /// Codec is probably supported.
+  case probablySupported = 1
+  /// Codec is not supported.
+  case notSupported = 2
+  /// Support status is unknown.
+  case unknown = 3
+}
+
 /// Playback state enumeration.
 enum PlaybackStateEnum: Int {
   /// Player is uninitialized.
@@ -269,6 +281,12 @@ struct VideoPlayerOptionsMessage {
   var allowPip: Bool
   /// Whether to auto-enter PiP when app goes to background.
   var autoEnterPipOnBackground: Bool
+  /// The subtitle render mode for embedded subtitles.
+  var subtitleRenderMode: SubtitleRenderModeEnum? = nil
+  /// Whether subtitles are enabled.
+  var subtitlesEnabled: Bool? = nil
+  /// Whether to show subtitles by default when available.
+  var showSubtitlesByDefault: Bool? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -289,6 +307,9 @@ struct VideoPlayerOptionsMessage {
     let mixWithOthers = pigeonVar_list[13] as! Bool
     let allowPip = pigeonVar_list[14] as! Bool
     let autoEnterPipOnBackground = pigeonVar_list[15] as! Bool
+    let subtitleRenderMode: SubtitleRenderModeEnum? = nilOrValue(pigeonVar_list[16])
+    let subtitlesEnabled: Bool? = nilOrValue(pigeonVar_list[17])
+    let showSubtitlesByDefault: Bool? = nilOrValue(pigeonVar_list[18])
 
     return VideoPlayerOptionsMessage(
       autoPlay: autoPlay,
@@ -306,7 +327,10 @@ struct VideoPlayerOptionsMessage {
       allowBackgroundPlayback: allowBackgroundPlayback,
       mixWithOthers: mixWithOthers,
       allowPip: allowPip,
-      autoEnterPipOnBackground: autoEnterPipOnBackground
+      autoEnterPipOnBackground: autoEnterPipOnBackground,
+      subtitleRenderMode: subtitleRenderMode,
+      subtitlesEnabled: subtitlesEnabled,
+      showSubtitlesByDefault: showSubtitlesByDefault
     )
   }
   func toList() -> [Any?] {
@@ -327,6 +351,9 @@ struct VideoPlayerOptionsMessage {
       mixWithOthers,
       allowPip,
       autoEnterPipOnBackground,
+      subtitleRenderMode,
+      subtitlesEnabled,
+      showSubtitlesByDefault,
     ]
   }
 }
@@ -840,6 +867,87 @@ struct ExternalSubtitleTrackMessage {
   }
 }
 
+/// Codec information for compatibility checking.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct CodecInfoMessage {
+  /// Four character code (e.g., "avc1", "hvc1", "mp4a").
+  var fourcc: String
+  /// Human-readable codec name (e.g., "H.264", "HEVC", "AAC").
+  var name: String
+  /// Full codec string including profile and level.
+  var codecString: String? = nil
+  /// MIME type for the codec (e.g., "video/mp4", "audio/mp4").
+  var mimeType: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> CodecInfoMessage? {
+    let fourcc = pigeonVar_list[0] as! String
+    let name = pigeonVar_list[1] as! String
+    let codecString: String? = nilOrValue(pigeonVar_list[2])
+    let mimeType: String? = nilOrValue(pigeonVar_list[3])
+
+    return CodecInfoMessage(
+      fourcc: fourcc,
+      name: name,
+      codecString: codecString,
+      mimeType: mimeType
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      fourcc,
+      name,
+      codecString,
+      mimeType,
+    ]
+  }
+}
+
+/// Result of checking codec compatibility.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct CodecCompatibilityMessage {
+  /// The codec that was checked.
+  var codec: CodecInfoMessage
+  /// The level of support for this codec.
+  var supportLevel: CodecSupportLevelEnum
+  /// Human-readable message about the support status.
+  var message: String? = nil
+  /// Minimum OS version required for this codec.
+  var minimumOsVersion: String? = nil
+  /// Alternative codecs that are supported.
+  var alternativeCodecs: [String?]? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> CodecCompatibilityMessage? {
+    let codec = pigeonVar_list[0] as! CodecInfoMessage
+    let supportLevel = pigeonVar_list[1] as! CodecSupportLevelEnum
+    let message: String? = nilOrValue(pigeonVar_list[2])
+    let minimumOsVersion: String? = nilOrValue(pigeonVar_list[3])
+    let alternativeCodecs: [String?]? = nilOrValue(pigeonVar_list[4])
+
+    return CodecCompatibilityMessage(
+      codec: codec,
+      supportLevel: supportLevel,
+      message: message,
+      minimumOsVersion: minimumOsVersion,
+      alternativeCodecs: alternativeCodecs
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      codec,
+      supportLevel,
+      message,
+      minimumOsVersion,
+      alternativeCodecs,
+    ]
+  }
+}
+
 /// Video player event data sent from the platform to Dart.
 ///
 /// This is a base class for all events. Specific event types will include
@@ -960,38 +1068,48 @@ private class PigeonMessagesPigeonCodecReader: FlutterStandardReader {
     case 137:
       let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
       if let enumResultAsInt = enumResultAsInt {
-        return PlaybackStateEnum(rawValue: enumResultAsInt)
+        return CodecSupportLevelEnum(rawValue: enumResultAsInt)
       }
       return nil
     case 138:
-      return VideoSourceMessage.fromList(self.readValue() as! [Any?])
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return PlaybackStateEnum(rawValue: enumResultAsInt)
+      }
+      return nil
     case 139:
-      return VideoPlayerOptionsMessage.fromList(self.readValue() as! [Any?])
+      return VideoSourceMessage.fromList(self.readValue() as! [Any?])
     case 140:
-      return PlatformInfoMessage.fromList(self.readValue() as! [Any?])
+      return VideoPlayerOptionsMessage.fromList(self.readValue() as! [Any?])
     case 141:
-      return BatteryInfoMessage.fromList(self.readValue() as! [Any?])
+      return PlatformInfoMessage.fromList(self.readValue() as! [Any?])
     case 142:
-      return SubtitleTrackMessage.fromList(self.readValue() as! [Any?])
+      return BatteryInfoMessage.fromList(self.readValue() as! [Any?])
     case 143:
-      return AudioTrackMessage.fromList(self.readValue() as! [Any?])
+      return SubtitleTrackMessage.fromList(self.readValue() as! [Any?])
     case 144:
-      return VideoQualityTrackMessage.fromList(self.readValue() as! [Any?])
+      return AudioTrackMessage.fromList(self.readValue() as! [Any?])
     case 145:
-      return PipOptionsMessage.fromList(self.readValue() as! [Any?])
+      return VideoQualityTrackMessage.fromList(self.readValue() as! [Any?])
     case 146:
-      return PipActionMessage.fromList(self.readValue() as! [Any?])
+      return PipOptionsMessage.fromList(self.readValue() as! [Any?])
     case 147:
-      return CastDeviceMessage.fromList(self.readValue() as! [Any?])
+      return PipActionMessage.fromList(self.readValue() as! [Any?])
     case 148:
-      return VideoMetadataMessage.fromList(self.readValue() as! [Any?])
+      return CastDeviceMessage.fromList(self.readValue() as! [Any?])
     case 149:
-      return MediaMetadataMessage.fromList(self.readValue() as! [Any?])
+      return VideoMetadataMessage.fromList(self.readValue() as! [Any?])
     case 150:
-      return SubtitleSourceMessage.fromList(self.readValue() as! [Any?])
+      return MediaMetadataMessage.fromList(self.readValue() as! [Any?])
     case 151:
-      return ExternalSubtitleTrackMessage.fromList(self.readValue() as! [Any?])
+      return SubtitleSourceMessage.fromList(self.readValue() as! [Any?])
     case 152:
+      return ExternalSubtitleTrackMessage.fromList(self.readValue() as! [Any?])
+    case 153:
+      return CodecInfoMessage.fromList(self.readValue() as! [Any?])
+    case 154:
+      return CodecCompatibilityMessage.fromList(self.readValue() as! [Any?])
+    case 155:
       return VideoPlayerEventMessage.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -1025,53 +1143,62 @@ private class PigeonMessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? SubtitleFormatEnum {
       super.writeByte(136)
       super.writeValue(value.rawValue)
-    } else if let value = value as? PlaybackStateEnum {
+    } else if let value = value as? CodecSupportLevelEnum {
       super.writeByte(137)
       super.writeValue(value.rawValue)
-    } else if let value = value as? VideoSourceMessage {
+    } else if let value = value as? PlaybackStateEnum {
       super.writeByte(138)
-      super.writeValue(value.toList())
-    } else if let value = value as? VideoPlayerOptionsMessage {
+      super.writeValue(value.rawValue)
+    } else if let value = value as? VideoSourceMessage {
       super.writeByte(139)
       super.writeValue(value.toList())
-    } else if let value = value as? PlatformInfoMessage {
+    } else if let value = value as? VideoPlayerOptionsMessage {
       super.writeByte(140)
       super.writeValue(value.toList())
-    } else if let value = value as? BatteryInfoMessage {
+    } else if let value = value as? PlatformInfoMessage {
       super.writeByte(141)
       super.writeValue(value.toList())
-    } else if let value = value as? SubtitleTrackMessage {
+    } else if let value = value as? BatteryInfoMessage {
       super.writeByte(142)
       super.writeValue(value.toList())
-    } else if let value = value as? AudioTrackMessage {
+    } else if let value = value as? SubtitleTrackMessage {
       super.writeByte(143)
       super.writeValue(value.toList())
-    } else if let value = value as? VideoQualityTrackMessage {
+    } else if let value = value as? AudioTrackMessage {
       super.writeByte(144)
       super.writeValue(value.toList())
-    } else if let value = value as? PipOptionsMessage {
+    } else if let value = value as? VideoQualityTrackMessage {
       super.writeByte(145)
       super.writeValue(value.toList())
-    } else if let value = value as? PipActionMessage {
+    } else if let value = value as? PipOptionsMessage {
       super.writeByte(146)
       super.writeValue(value.toList())
-    } else if let value = value as? CastDeviceMessage {
+    } else if let value = value as? PipActionMessage {
       super.writeByte(147)
       super.writeValue(value.toList())
-    } else if let value = value as? VideoMetadataMessage {
+    } else if let value = value as? CastDeviceMessage {
       super.writeByte(148)
       super.writeValue(value.toList())
-    } else if let value = value as? MediaMetadataMessage {
+    } else if let value = value as? VideoMetadataMessage {
       super.writeByte(149)
       super.writeValue(value.toList())
-    } else if let value = value as? SubtitleSourceMessage {
+    } else if let value = value as? MediaMetadataMessage {
       super.writeByte(150)
       super.writeValue(value.toList())
-    } else if let value = value as? ExternalSubtitleTrackMessage {
+    } else if let value = value as? SubtitleSourceMessage {
       super.writeByte(151)
       super.writeValue(value.toList())
-    } else if let value = value as? VideoPlayerEventMessage {
+    } else if let value = value as? ExternalSubtitleTrackMessage {
       super.writeByte(152)
+      super.writeValue(value.toList())
+    } else if let value = value as? CodecInfoMessage {
+      super.writeByte(153)
+      super.writeValue(value.toList())
+    } else if let value = value as? CodecCompatibilityMessage {
+      super.writeByte(154)
+      super.writeValue(value.toList())
+    } else if let value = value as? VideoPlayerEventMessage {
+      super.writeByte(155)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -1241,6 +1368,30 @@ protocol ProVideoPlayerHostApi {
   func getCastState(playerId: Int64, completion: @escaping (Result<CastStateEnum, Error>) -> Void)
   /// Gets the current cast device.
   func getCurrentCastDevice(playerId: Int64, completion: @escaping (Result<CastDeviceMessage?, Error>) -> Void)
+  /// Checks if a specific codec is supported on this platform.
+  ///
+  /// Uses platform-specific APIs:
+  /// - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+  /// - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+  /// - Android: MediaCodecList.findDecoderForFormat()
+  ///
+  /// The [codec] parameter should include the fourcc and optionally
+  /// the full codec string for more accurate checking.
+  func checkCodecSupport(codec: CodecInfoMessage, completion: @escaping (Result<CodecCompatibilityMessage, Error>) -> Void)
+  /// Checks if multiple codecs are supported on this platform.
+  ///
+  /// More efficient than calling [checkCodecSupport] multiple times
+  /// as it may batch platform API calls.
+  func checkCodecsSupport(codecs: [CodecInfoMessage?], completion: @escaping (Result<[CodecCompatibilityMessage?], Error>) -> Void)
+  /// Gets a list of codecs that are guaranteed to be supported.
+  ///
+  /// Returns the platform's baseline supported codecs:
+  /// - Common video codecs (H.264, potentially HEVC)
+  /// - Common audio codecs (AAC, MP3)
+  ///
+  /// This can be used to suggest transcoding options when
+  /// a file contains unsupported codecs.
+  func getSupportedCodecs(completion: @escaping (Result<[String?], Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -2438,6 +2589,76 @@ class ProVideoPlayerHostApiSetup {
       }
     } else {
       getCurrentCastDeviceChannel.setMessageHandler(nil)
+    }
+    /// Checks if a specific codec is supported on this platform.
+    ///
+    /// Uses platform-specific APIs:
+    /// - Web: MediaSource.isTypeSupported() / HTMLMediaElement.canPlayType()
+    /// - iOS/macOS: AVURLAsset.isPlayableExtendedMIMEType()
+    /// - Android: MediaCodecList.findDecoderForFormat()
+    ///
+    /// The [codec] parameter should include the fourcc and optionally
+    /// the full codec string for more accurate checking.
+    let checkCodecSupportChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecSupport\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      checkCodecSupportChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let codecArg = args[0] as! CodecInfoMessage
+        api.checkCodecSupport(codec: codecArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      checkCodecSupportChannel.setMessageHandler(nil)
+    }
+    /// Checks if multiple codecs are supported on this platform.
+    ///
+    /// More efficient than calling [checkCodecSupport] multiple times
+    /// as it may batch platform API calls.
+    let checkCodecsSupportChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.checkCodecsSupport\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      checkCodecsSupportChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let codecsArg = args[0] as! [CodecInfoMessage?]
+        api.checkCodecsSupport(codecs: codecsArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      checkCodecsSupportChannel.setMessageHandler(nil)
+    }
+    /// Gets a list of codecs that are guaranteed to be supported.
+    ///
+    /// Returns the platform's baseline supported codecs:
+    /// - Common video codecs (H.264, potentially HEVC)
+    /// - Common audio codecs (AAC, MP3)
+    ///
+    /// This can be used to suggest transcoding options when
+    /// a file contains unsupported codecs.
+    let getSupportedCodecsChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.getSupportedCodecs\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getSupportedCodecsChannel.setMessageHandler { _, reply in
+        api.getSupportedCodecs { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getSupportedCodecsChannel.setMessageHandler(nil)
     }
   }
 }

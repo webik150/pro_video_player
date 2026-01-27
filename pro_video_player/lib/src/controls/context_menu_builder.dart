@@ -19,6 +19,10 @@ typedef FullscreenCallback = void Function();
 ///
 /// This class encapsulates context menu construction and action handling,
 /// making it easier to test and maintain separately from UI state management.
+///
+/// On desktop platforms, the toolbar is minimal by design and users access
+/// all features via the right-click context menu. This builder ensures all
+/// toolbar options are available in the context menu when [isMinimalMode] is true.
 class ContextMenuBuilder {
   /// Creates a context menu builder.
   ContextMenuBuilder({
@@ -26,32 +30,38 @@ class ContextMenuBuilder {
     required ButtonsConfig buttonsConfig,
     required bool isMinimalMode,
     required bool? isPipAvailable,
+    required bool? isBackgroundPlaybackSupported,
     required ShowDialogCallback onShowSubtitlePicker,
     required ShowDialogCallback onShowAudioPicker,
     required ShowDialogCallback onShowQualityPicker,
     required ShowDialogCallback onShowChaptersPicker,
     required ShowDialogCallback onShowSpeedPicker,
+    required ShowDialogCallback onShowScalingModePicker,
     required VoidCallback onResetHideTimer,
   }) : _videoController = videoController,
        _buttonsConfig = buttonsConfig,
        _isMinimalMode = isMinimalMode,
        _isPipAvailable = isPipAvailable,
+       _isBackgroundPlaybackSupported = isBackgroundPlaybackSupported,
        _onShowSubtitlePicker = onShowSubtitlePicker,
        _onShowAudioPicker = onShowAudioPicker,
        _onShowQualityPicker = onShowQualityPicker,
        _onShowChaptersPicker = onShowChaptersPicker,
        _onShowSpeedPicker = onShowSpeedPicker,
+       _onShowScalingModePicker = onShowScalingModePicker,
        _onResetHideTimer = onResetHideTimer;
 
   final ProVideoPlayerController _videoController;
   final ButtonsConfig _buttonsConfig;
   final bool _isMinimalMode;
   final bool? _isPipAvailable;
+  final bool? _isBackgroundPlaybackSupported;
   final ShowDialogCallback _onShowSubtitlePicker;
   final ShowDialogCallback _onShowAudioPicker;
   final ShowDialogCallback _onShowQualityPicker;
   final ShowDialogCallback _onShowChaptersPicker;
   final ShowDialogCallback _onShowSpeedPicker;
+  final ShowDialogCallback _onShowScalingModePicker;
   final VoidCallback _onResetHideTimer;
 
   /// Shows context menu at the given position.
@@ -63,7 +73,7 @@ class ContextMenuBuilder {
     required FullscreenCallback onExitFullscreen,
   }) async {
     final value = _videoController.value;
-    final items = _buildMenuItems(value, theme);
+    final items = buildMenuItems(value, theme);
 
     final selectedValue = await showMenu<String>(
       context: context,
@@ -84,9 +94,11 @@ class ContextMenuBuilder {
     _onResetHideTimer();
   }
 
-  List<PopupMenuEntry<String>> _buildMenuItems(VideoPlayerValue value, VideoPlayerTheme theme) {
-    final isPlaying = value.isPlaying;
-    final isMuted = value.volume == 0;
+  /// Builds the menu items for the context menu.
+  ///
+  /// This is exposed for testing purposes.
+  @visibleForTesting
+  List<PopupMenuEntry<String>> buildMenuItems(VideoPlayerValue value, VideoPlayerTheme theme) {
     final currentSpeed = value.playbackSpeed;
     final hasSubtitles = value.subtitleTracks.isNotEmpty;
     final hasAudioTracks = value.audioTracks.length > 1;
@@ -95,22 +107,24 @@ class ContextMenuBuilder {
     final hasPlaylist = value.playlist != null;
 
     return [
-      // Basic playback controls
-      _buildPlayPauseItem(isPlaying),
-      _buildMuteItem(isMuted),
-
-      // Track selection options (when in minimal mode or tracks available)
+      // Track selection options (when in minimal mode and tracks available)
       if (_isMinimalMode && (hasSubtitles || hasAudioTracks || hasQualityTracks || hasChapters)) ...[
-        const PopupMenuDivider(),
         if (hasSubtitles && _buttonsConfig.showSubtitleButton) _buildSubtitlesItem(value),
         if (hasAudioTracks && _buttonsConfig.showAudioButton) _buildAudioTrackItem(),
         if (hasQualityTracks && _buttonsConfig.showQualityButton) _buildQualityItem(),
         if (hasChapters) _buildChaptersItem(),
+        const PopupMenuDivider(),
       ],
 
-      // Speed submenu
-      const PopupMenuDivider(),
+      // Speed option
       _buildSpeedItem(currentSpeed),
+
+      // Scaling mode (when in minimal mode)
+      if (_isMinimalMode && _buttonsConfig.showScalingModeButton) _buildScalingModeItem(),
+
+      // Background playback (when in minimal mode and supported)
+      if (_isMinimalMode && (_isBackgroundPlaybackSupported ?? false) && _buttonsConfig.showBackgroundPlaybackButton)
+        _buildBackgroundPlaybackItem(value),
 
       // PiP and Fullscreen
       if (_isMinimalMode && (_isPipAvailable ?? false) && _buttonsConfig.showPipButton ||
@@ -134,28 +148,6 @@ class ContextMenuBuilder {
       _buildKeyboardShortcutsItem(),
     ];
   }
-
-  PopupMenuItem<String> _buildPlayPauseItem(bool isPlaying) => PopupMenuItem<String>(
-    value: 'play_pause',
-    child: Row(
-      children: [
-        Icon(isPlaying ? Icons.pause : Icons.play_arrow, size: 20),
-        const SizedBox(width: 12),
-        Text(isPlaying ? 'Pause' : 'Play'),
-      ],
-    ),
-  );
-
-  PopupMenuItem<String> _buildMuteItem(bool isMuted) => PopupMenuItem<String>(
-    value: 'mute',
-    child: Row(
-      children: [
-        Icon(isMuted ? Icons.volume_up : Icons.volume_off, size: 20),
-        const SizedBox(width: 12),
-        Text(isMuted ? 'Unmute' : 'Mute'),
-      ],
-    ),
-  );
 
   PopupMenuItem<String> _buildSubtitlesItem(VideoPlayerValue value) => PopupMenuItem<String>(
     value: 'subtitles',
@@ -218,6 +210,30 @@ class ContextMenuBuilder {
         Text('Speed (${currentSpeed}x)'),
         const Spacer(),
         const Icon(Icons.chevron_right, size: 16),
+      ],
+    ),
+  );
+
+  PopupMenuItem<String> _buildScalingModeItem() => const PopupMenuItem<String>(
+    value: 'scaling_mode',
+    child: Row(
+      children: [
+        Icon(Icons.aspect_ratio, size: 20),
+        SizedBox(width: 12),
+        Text('Scaling Mode'),
+        Spacer(),
+        Icon(Icons.chevron_right, size: 16),
+      ],
+    ),
+  );
+
+  PopupMenuItem<String> _buildBackgroundPlaybackItem(VideoPlayerValue value) => PopupMenuItem<String>(
+    value: 'background_playback',
+    child: Row(
+      children: [
+        Icon(value.isBackgroundPlaybackEnabled ? Icons.headphones : Icons.headphones_outlined, size: 20),
+        const SizedBox(width: 12),
+        Text('Background Playback${value.isBackgroundPlaybackEnabled ? ' (On)' : ''}'),
       ],
     ),
   );
@@ -294,14 +310,6 @@ class ContextMenuBuilder {
     required FullscreenCallback onExitFullscreen,
   }) {
     switch (selectedValue) {
-      case 'play_pause':
-        if (value.isPlaying) {
-          unawaited(_videoController.pause());
-        } else {
-          unawaited(_videoController.play());
-        }
-      case 'mute':
-        unawaited(_videoController.setVolume(value.volume == 0 ? 1 : 0));
       case 'subtitles':
         if (context.mounted) _onShowSubtitlePicker(context: context, theme: theme);
       case 'audio':
@@ -312,6 +320,10 @@ class ContextMenuBuilder {
         if (context.mounted) _onShowChaptersPicker(context: context, theme: theme);
       case 'speed':
         if (context.mounted) _onShowSpeedPicker(context: context, theme: theme);
+      case 'scaling_mode':
+        if (context.mounted) _onShowScalingModePicker(context: context, theme: theme);
+      case 'background_playback':
+        unawaited(_videoController.setBackgroundPlayback(enabled: !value.isBackgroundPlaybackEnabled));
       case 'pip':
         if (value.isPipActive) {
           unawaited(_videoController.exitPip());

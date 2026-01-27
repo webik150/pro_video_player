@@ -1,4 +1,6 @@
 /// Tests for video_player compatibility widgets.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pro_video_player/video_player_compat.dart';
@@ -6,7 +8,7 @@ import 'package:pro_video_player/video_player_compat.dart';
 void main() {
   group('ClosedCaption', () {
     testWidgets('renders nothing when text is null', (tester) async {
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: ClosedCaption(text: null))));
+      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: ClosedCaption())));
 
       expect(find.byType(Text), findsNothing);
       expect(find.byType(SizedBox), findsOneWidget);

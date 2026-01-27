@@ -22,9 +22,9 @@ void main() {
       );
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('initialization', () {

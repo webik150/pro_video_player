@@ -10,9 +10,6 @@ import 'helpers/e2e_platform.dart';
 import 'shared/e2e_constants.dart';
 import 'shared/e2e_test_fixture.dart';
 
-// Memory tracking can be enabled via: --dart-define=TRACK_MEMORY=true
-const bool _enableMemoryTracking = bool.fromEnvironment('TRACK_MEMORY', defaultValue: false);
-
 /// End-to-end UI tests for the Pro Video Player example app.
 ///
 /// These tests verify that the UI controls work correctly by interacting
@@ -33,8 +30,7 @@ void main() {
     // Set up test fixture with automatic viewport, error suppression, and timing
     final fixture = E2ETestFixtureWithHelpers(
       enableDetailedLogging: true,
-      trackMemory: _enableMemoryTracking,
-      memoryLeakThresholdMB: 100.0, // Higher threshold for full E2E test
+      memoryLeakThresholdMB: 100, // Higher threshold for full E2E test
     );
 
     // Start the app

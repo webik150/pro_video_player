@@ -1,3 +1,8 @@
+export 'extraction/embedded_subtitle_reader.dart';
+export 'extraction/streaming/dash_subtitle_extractor.dart';
+export 'extraction/streaming/hls_subtitle_extractor.dart';
+export 'extraction/subtitle_extractor.dart';
+export 'extraction/subtitle_sample_decoder.dart';
 export 'srt_parser.dart';
 export 'ssa_parser.dart';
 export 'subtitle_discovery.dart';

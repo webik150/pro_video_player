@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../abstractions/video_element_interface.dart';
 import '../abstractions/wake_lock_interface.dart';
 import '../manager_callbacks.dart';
@@ -145,7 +147,7 @@ class WakeLockManager with WebManagerCallbacks {
   /// Releases any active wake lock.
   void dispose() {
     if (_isActive) {
-      _wakeLock.release();
+      unawaited(_wakeLock.release());
       _isActive = false;
       verboseLog('Wake lock released on dispose', tag: 'WakeLockManager');
     }

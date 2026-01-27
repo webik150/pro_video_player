@@ -438,11 +438,13 @@ class VideoControlsController extends ChangeNotifier {
       buttonsConfig: buttonsConfig,
       isMinimalMode: behaviorConfig.minimalToolbarOnDesktop,
       isPipAvailable: _controlsState.isPipAvailable,
+      isBackgroundPlaybackSupported: _controlsState.isBackgroundPlaybackSupported,
       onShowSubtitlePicker: showSubtitlePicker,
       onShowAudioPicker: showAudioPicker,
       onShowQualityPicker: showQualityPicker,
       onShowChaptersPicker: showChaptersPicker,
       onShowSpeedPicker: showSpeedPicker,
+      onShowScalingModePicker: showScalingModePicker,
       onResetHideTimer: _resetHideTimer,
     );
 

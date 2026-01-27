@@ -18,9 +18,9 @@ void main() {
       manager = QualityManager(emitEvent: fixture.emitEvent, videoElement: fixture.videoElement);
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('no adaptive streaming', () {

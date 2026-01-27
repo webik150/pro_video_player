@@ -58,26 +58,6 @@ import 'video_player_value.dart';
 /// ```
 @videoPlayerCompat
 class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
-  /// Internal pro_video_player controller.
-  late final pro.ProVideoPlayerController _proController;
-
-  /// Stored closed caption file for caption auto-update.
-  Future<ClosedCaptionFile>? _closedCaptionFile;
-
-  /// Parsed captions for position-based lookup.
-  List<Caption>? _parsedCaptions;
-
-  /// Current caption index for efficient lookup.
-  int _currentCaptionIndex = -1;
-
-  // Store constructor parameters for later access
-  final String? _dataSource;
-  final DataSourceType _dataSourceType;
-  final VideoFormat? _formatHint;
-  final Map<String, String> _httpHeaders;
-  final VideoPlayerOptions? _videoPlayerOptions;
-  final String? _package;
-
   /// Creates a video player controller for a network video using a URL.
   ///
   /// [video_player compatibility] This constructor matches video_player exactly.
@@ -206,6 +186,26 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       videoPlayerOptions: _convertOptions(videoPlayerOptions),
     );
   }
+
+  /// Internal pro_video_player controller.
+  late final pro.ProVideoPlayerController _proController;
+
+  /// Stored closed caption file for caption auto-update.
+  Future<ClosedCaptionFile>? _closedCaptionFile;
+
+  /// Parsed captions for position-based lookup.
+  List<Caption>? _parsedCaptions;
+
+  /// Current caption index for efficient lookup.
+  int _currentCaptionIndex = -1;
+
+  // Store constructor parameters for later access
+  final String? _dataSource;
+  final DataSourceType _dataSourceType;
+  final VideoFormat? _formatHint;
+  final Map<String, String> _httpHeaders;
+  final VideoPlayerOptions? _videoPlayerOptions;
+  final String? _package;
 
   /// Converts compatibility options to pro_video_player options.
   platform.VideoPlayerOptions? _convertOptions(VideoPlayerOptions? options) {

@@ -1,4 +1,6 @@
 /// Tests for video_player compatibility caption file parsers.
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pro_video_player/video_player_compat.dart';
 
@@ -21,7 +23,8 @@ void main() {
     });
 
     test('parses simple SRT file', () {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:01,000 --> 00:00:04,000
 Hello, world!
 
@@ -45,7 +48,8 @@ This is a subtitle.
     });
 
     test('parses SRT with milliseconds', () {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:01:30,500 --> 00:01:35,750
 Caption with milliseconds
 ''';
@@ -58,7 +62,8 @@ Caption with milliseconds
     });
 
     test('parses multi-line captions', () {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:01,000 --> 00:00:04,000
 Line one
 Line two
@@ -72,7 +77,8 @@ Line two
     });
 
     test('preserves original fileContents', () {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:01,000 --> 00:00:04,000
 Test
 ''';
@@ -83,7 +89,8 @@ Test
     });
 
     test('numbers captions sequentially starting from 1', () {
-      const srtContent = '''1
+      const srtContent = '''
+1
 00:00:01,000 --> 00:00:02,000
 First
 
@@ -114,7 +121,8 @@ Third
     });
 
     test('parses simple WebVTT file', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 00:00:01.000 --> 00:00:04.000
 Hello, world!
@@ -138,7 +146,8 @@ This is a subtitle.
     });
 
     test('parses WebVTT with milliseconds', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 00:01:30.500 --> 00:01:35.750
 Caption with milliseconds
@@ -152,7 +161,8 @@ Caption with milliseconds
     });
 
     test('parses WebVTT with cue identifiers', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 1
 00:00:01.000 --> 00:00:04.000
@@ -171,7 +181,8 @@ Second cue
     });
 
     test('parses multi-line captions', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 00:00:01.000 --> 00:00:04.000
 Line one
@@ -186,7 +197,8 @@ Line two
     });
 
     test('preserves original fileContents', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 00:00:01.000 --> 00:00:04.000
 Test
@@ -198,7 +210,8 @@ Test
     });
 
     test('handles WebVTT header variations', () {
-      const vttContent = '''WEBVTT - This is a comment
+      const vttContent = '''
+WEBVTT - This is a comment
 
 00:00:01.000 --> 00:00:04.000
 Test
@@ -213,7 +226,8 @@ Test
 
   group('Caption number assignment', () {
     test('SubRipCaptionFile assigns sequential numbers', () {
-      const srtContent = '''100
+      const srtContent = '''
+100
 00:00:01,000 --> 00:00:02,000
 First
 
@@ -230,7 +244,8 @@ Second
     });
 
     test('WebVTTCaptionFile assigns sequential numbers', () {
-      const vttContent = '''WEBVTT
+      const vttContent = '''
+WEBVTT
 
 00:00:01.000 --> 00:00:02.000
 First

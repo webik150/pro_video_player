@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -186,7 +185,7 @@ class E2ETestFixture {
           '${section.name.padRight(40)}'
           '${section.durationSeconds.toStringAsFixed(1).padLeft(12)}'
           '${section.durationMs.toString().padLeft(12)}'
-          '${('$percentage%').padLeft(12)}';
+          '${'$percentage%'.padLeft(12)}';
       debugPrint(line);
     }
 
@@ -429,7 +428,7 @@ class E2ETestFixtureWithHelpers extends E2ETestFixture {
       debugPrint('⚠️ Video initialization timeout');
     }
 
-    endSection('Wait for video initialization');
+    await endSection('Wait for video initialization');
     return duration;
   }
 
@@ -453,7 +452,7 @@ class E2ETestFixtureWithHelpers extends E2ETestFixture {
 
     final position = await waitForPlaybackPosition(tester, positionFinder, minSeconds: minSeconds, timeout: timeout);
 
-    endSection('Wait for playback to advance');
+    await endSection('Wait for playback to advance');
     return position;
   }
 

@@ -44,53 +44,62 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is SubtitleFormatEnum) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    } else if (value is PlaybackStateEnum) {
+    } else if (value is CodecSupportLevelEnum) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
-    } else if (value is VideoSourceMessage) {
+    } else if (value is PlaybackStateEnum) {
       buffer.putUint8(138);
-      writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerOptionsMessage) {
+      writeValue(buffer, value.index);
+    } else if (value is VideoSourceMessage) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    } else if (value is PlatformInfoMessage) {
+    } else if (value is VideoPlayerOptionsMessage) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    } else if (value is BatteryInfoMessage) {
+    } else if (value is PlatformInfoMessage) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleTrackMessage) {
+    } else if (value is BatteryInfoMessage) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    } else if (value is AudioTrackMessage) {
+    } else if (value is SubtitleTrackMessage) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    } else if (value is VideoQualityTrackMessage) {
+    } else if (value is AudioTrackMessage) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    } else if (value is PipOptionsMessage) {
+    } else if (value is VideoQualityTrackMessage) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    } else if (value is PipActionMessage) {
+    } else if (value is PipOptionsMessage) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    } else if (value is CastDeviceMessage) {
+    } else if (value is PipActionMessage) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    } else if (value is VideoMetadataMessage) {
+    } else if (value is CastDeviceMessage) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    } else if (value is MediaMetadataMessage) {
+    } else if (value is VideoMetadataMessage) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleSourceMessage) {
+    } else if (value is MediaMetadataMessage) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    } else if (value is ExternalSubtitleTrackMessage) {
+    } else if (value is SubtitleSourceMessage) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerEventMessage) {
+    } else if (value is ExternalSubtitleTrackMessage) {
       buffer.putUint8(152);
+      writeValue(buffer, value.encode());
+    } else if (value is CodecInfoMessage) {
+      buffer.putUint8(153);
+      writeValue(buffer, value.encode());
+    } else if (value is CodecCompatibilityMessage) {
+      buffer.putUint8(154);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoPlayerEventMessage) {
+      buffer.putUint8(155);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -126,36 +135,43 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : SubtitleFormatEnum.values[value];
       case 137:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PlaybackStateEnum.values[value];
+        return value == null ? null : CodecSupportLevelEnum.values[value];
       case 138:
-        return VideoSourceMessage.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PlaybackStateEnum.values[value];
       case 139:
-        return VideoPlayerOptionsMessage.decode(readValue(buffer)!);
+        return VideoSourceMessage.decode(readValue(buffer)!);
       case 140:
-        return PlatformInfoMessage.decode(readValue(buffer)!);
+        return VideoPlayerOptionsMessage.decode(readValue(buffer)!);
       case 141:
-        return BatteryInfoMessage.decode(readValue(buffer)!);
+        return PlatformInfoMessage.decode(readValue(buffer)!);
       case 142:
-        return SubtitleTrackMessage.decode(readValue(buffer)!);
+        return BatteryInfoMessage.decode(readValue(buffer)!);
       case 143:
-        return AudioTrackMessage.decode(readValue(buffer)!);
+        return SubtitleTrackMessage.decode(readValue(buffer)!);
       case 144:
-        return VideoQualityTrackMessage.decode(readValue(buffer)!);
+        return AudioTrackMessage.decode(readValue(buffer)!);
       case 145:
-        return PipOptionsMessage.decode(readValue(buffer)!);
+        return VideoQualityTrackMessage.decode(readValue(buffer)!);
       case 146:
-        return PipActionMessage.decode(readValue(buffer)!);
+        return PipOptionsMessage.decode(readValue(buffer)!);
       case 147:
-        return CastDeviceMessage.decode(readValue(buffer)!);
+        return PipActionMessage.decode(readValue(buffer)!);
       case 148:
-        return VideoMetadataMessage.decode(readValue(buffer)!);
+        return CastDeviceMessage.decode(readValue(buffer)!);
       case 149:
-        return MediaMetadataMessage.decode(readValue(buffer)!);
+        return VideoMetadataMessage.decode(readValue(buffer)!);
       case 150:
-        return SubtitleSourceMessage.decode(readValue(buffer)!);
+        return MediaMetadataMessage.decode(readValue(buffer)!);
       case 151:
-        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+        return SubtitleSourceMessage.decode(readValue(buffer)!);
       case 152:
+        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+      case 153:
+        return CodecInfoMessage.decode(readValue(buffer)!);
+      case 154:
+        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+      case 155:
         return VideoPlayerEventMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);

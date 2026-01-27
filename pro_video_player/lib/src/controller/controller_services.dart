@@ -115,6 +115,7 @@ class ControllerServices {
     required void Function({required bool isRetrying}) setRetrying,
     required void Function(int?) setPlayerId,
     required void Function(VideoSource) setSource,
+    required VideoSource? Function() getSource,
     required void Function() ensureInitialized,
     required Future<void> Function() onRetry,
     required Future<void> Function() onPlay,
@@ -140,6 +141,7 @@ class ControllerServices {
       getOptions: getOptions,
       platform: platform,
       ensureInitialized: ensureInitialized,
+      getSource: getSource,
     );
 
     final playbackManager = PlaybackManager(

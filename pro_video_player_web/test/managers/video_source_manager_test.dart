@@ -16,9 +16,9 @@ void main() {
       manager = VideoSourceManager(emitEvent: fixture.emitEvent, videoElement: fixture.videoElement);
     });
 
-    tearDown(() {
+    tearDown(() async {
       manager.dispose();
-      fixture.tearDown();
+      await fixture.tearDown();
     });
 
     group('source type detection', () {

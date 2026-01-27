@@ -59,6 +59,7 @@ class VideoPlayerValue {
     this.chapters = const [],
     this.currentChapter,
     this.currentEmbeddedCue,
+    this.embeddedSubtitleCues,
   });
 
   /// The current playback state.
@@ -322,6 +323,19 @@ class VideoPlayerValue {
   /// See [EmbeddedSubtitleCueEvent] for the event that updates this value.
   final SubtitleCue? currentEmbeddedCue;
 
+  /// Extracted cues for embedded subtitles when using Flutter render mode.
+  ///
+  /// When [currentSubtitleRenderMode] is [SubtitleRenderMode.flutter] and an
+  /// embedded subtitle track is selected, this contains the extracted cues
+  /// from the HLS/DASH stream. The subtitle overlay widget uses these cues
+  /// to render subtitles with Flutter instead of relying on native rendering.
+  ///
+  /// This is `null` when:
+  /// - No embedded subtitle track is selected
+  /// - Using native render mode
+  /// - Cues haven't been extracted yet
+  final List<SubtitleCue>? embeddedSubtitleCues;
+
   /// Whether the video has chapter information available.
   bool get hasChapters => chapters.isNotEmpty;
 
@@ -426,9 +440,11 @@ class VideoPlayerValue {
     List<Chapter>? chapters,
     Chapter? currentChapter,
     SubtitleCue? currentEmbeddedCue,
+    List<SubtitleCue>? embeddedSubtitleCues,
     bool clearError = false,
     bool clearLockedOrientation = false,
     bool clearCurrentChapter = false,
+    bool clearEmbeddedSubtitleCues = false,
     bool clearSelectedSubtitle = false,
     bool clearSelectedAudio = false,
     bool clearSelectedQuality = false,
@@ -479,6 +495,7 @@ class VideoPlayerValue {
     chapters: chapters ?? this.chapters,
     currentChapter: clearCurrentChapter ? null : (currentChapter ?? this.currentChapter),
     currentEmbeddedCue: clearCurrentEmbeddedCue ? null : (currentEmbeddedCue ?? this.currentEmbeddedCue),
+    embeddedSubtitleCues: clearEmbeddedSubtitleCues ? null : (embeddedSubtitleCues ?? this.embeddedSubtitleCues),
   );
 
   @override
@@ -523,7 +540,8 @@ class VideoPlayerValue {
         lockedOrientation == other.lockedOrientation &&
         _listEquals(chapters, other.chapters) &&
         currentChapter == other.currentChapter &&
-        currentEmbeddedCue == other.currentEmbeddedCue;
+        currentEmbeddedCue == other.currentEmbeddedCue &&
+        _listEquals(embeddedSubtitleCues ?? [], other.embeddedSubtitleCues ?? []);
   }
 
   @override
@@ -569,6 +587,7 @@ class VideoPlayerValue {
         Object.hashAll(chapters),
         currentChapter,
         currentEmbeddedCue,
+        Object.hashAll(embeddedSubtitleCues ?? []),
       ),
     ),
   );
@@ -613,7 +632,8 @@ class VideoPlayerValue {
       'lockedOrientation: $lockedOrientation, '
       'chapters: ${chapters.length}, '
       'currentChapter: ${currentChapter?.title}, '
-      'currentEmbeddedCue: ${currentEmbeddedCue != null ? (currentEmbeddedCue!.text.length > 30 ? '${currentEmbeddedCue!.text.substring(0, 30)}...' : currentEmbeddedCue!.text) : null}'
+      'currentEmbeddedCue: ${currentEmbeddedCue != null ? (currentEmbeddedCue!.text.length > 30 ? '${currentEmbeddedCue!.text.substring(0, 30)}...' : currentEmbeddedCue!.text) : null}, '
+      'embeddedSubtitleCues: ${embeddedSubtitleCues?.length ?? 0}'
       ')';
 }
 

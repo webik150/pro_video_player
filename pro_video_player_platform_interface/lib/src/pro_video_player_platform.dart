@@ -831,6 +831,75 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
   Future<void> setWindowFullscreen({required bool fullscreen}) async {
     // Default implementation does nothing (mobile/web platforms)
   }
+
+  // ==================== Codec Compatibility ====================
+
+  /// Checks if a specific codec is supported on the current platform.
+  ///
+  /// This performs a pre-flight check to determine whether the platform can
+  /// play a video/audio codec before attempting playback.
+  ///
+  /// **Platform implementations:**
+  /// - **Web**: Uses `MediaSource.isTypeSupported()` and `canPlayType()`
+  /// - **iOS/macOS**: Uses `AVURLAsset.isPlayableExtendedMIMEType()`
+  /// - **Android**: Uses `MediaCodecList.findDecoderForFormat()`
+  ///
+  /// Returns a [CodecCompatibility] with:
+  /// - [CodecSupportLevel.supported] - Confirmed playable
+  /// - [CodecSupportLevel.probablySupported] - Likely playable (e.g., "probably" from canPlayType)
+  /// - [CodecSupportLevel.notSupported] - Cannot play
+  /// - [CodecSupportLevel.unknown] - Unable to determine
+  ///
+  /// Example:
+  /// ```dart
+  /// final codec = CodecInfo(fourcc: 'avc1', name: 'H.264', codecString: 'avc1.64001F');
+  /// final result = await platform.checkCodecSupport(codec);
+  /// if (!result.isPlayable) {
+  ///   print('Cannot play ${codec.name}: ${result.message}');
+  ///   print('Try: ${result.alternativeCodecs.join(", ")}');
+  /// }
+  /// ```
+  Future<CodecCompatibility> checkCodecSupport(CodecInfo codec) {
+    throw UnimplementedError('checkCodecSupport() has not been implemented.');
+  }
+
+  /// Checks if multiple codecs are supported on the current platform.
+  ///
+  /// More efficient than calling [checkCodecSupport] multiple times as it
+  /// batches the platform calls.
+  ///
+  /// Returns a list of [CodecCompatibility] results in the same order as
+  /// the input codecs.
+  ///
+  /// Example:
+  /// ```dart
+  /// final codecs = [
+  ///   CodecInfo(fourcc: 'avc1', name: 'H.264'),
+  ///   CodecInfo(fourcc: 'hvc1', name: 'HEVC'),
+  ///   CodecInfo(fourcc: 'av01', name: 'AV1'),
+  /// ];
+  /// final results = await platform.checkCodecsSupport(codecs);
+  /// final unsupported = results.where((r) => !r.isPlayable);
+  /// ```
+  Future<List<CodecCompatibility>> checkCodecsSupport(List<CodecInfo> codecs) {
+    throw UnimplementedError('checkCodecsSupport() has not been implemented.');
+  }
+
+  /// Gets a list of commonly supported codec names on the current platform.
+  ///
+  /// Returns a list of codec names (e.g., ["H.264", "HEVC", "AAC", "Opus"])
+  /// that the platform is known to support.
+  ///
+  /// This is useful for:
+  /// - Showing users what formats their device supports
+  /// - Pre-filtering content before detailed codec checks
+  /// - Providing quick codec support overview
+  ///
+  /// Note: This returns commonly supported codecs, not an exhaustive list.
+  /// For accurate codec support checking, use [checkCodecSupport].
+  Future<List<String>> getSupportedCodecs() {
+    throw UnimplementedError('getSupportedCodecs() has not been implemented.');
+  }
 }
 
 /// Private default implementation using [PigeonMethodChannelBase].

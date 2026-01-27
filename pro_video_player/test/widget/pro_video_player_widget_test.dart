@@ -283,14 +283,9 @@ void main() {
           options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
         );
 
+        // Use default controls mode (flutter) - VideoPlayerControls handles subtitles
         await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 400,
-              height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
-            ),
-          ),
+          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
         );
 
         // Emit subtitle track and cue events
@@ -305,25 +300,25 @@ void main() {
 
         await tester.pump();
 
-        // SubtitleOverlay should be present
+        // SubtitleOverlay should be present (provided by VideoPlayerControls)
         expect(find.byType(SubtitleOverlay), findsOneWidget);
         // Subtitle text should be visible
         expect(find.text('Test subtitle'), findsOneWidget);
       });
 
-      testWidgets('renders subtitles across all controls modes with Flutter rendering', (tester) async {
+      testWidgets('renders subtitles with native controls and Flutter subtitle rendering', (tester) async {
         // Initialize with Flutter subtitle rendering mode
         await fixture.initializeController(
           options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
         );
 
-        // Test with ControlsMode.none (simpler case, no complex controls hierarchy)
+        // Test with ControlsMode.native - Flutter renders subtitles over native controls
         await tester.pumpWidget(
           buildTestWidget(
             SizedBox(
               width: 400,
               height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
+              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native),
             ),
           ),
         );
@@ -349,14 +344,9 @@ void main() {
           options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
         );
 
+        // Use default controls mode (flutter) - VideoPlayerControls handles subtitles
         await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 400,
-              height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
-            ),
-          ),
+          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
         );
 
         // Emit first cue
@@ -386,6 +376,149 @@ void main() {
 
         expect(find.text('First cue'), findsNothing);
         expect(find.text('Second cue'), findsOneWidget);
+      });
+    });
+
+    group('no duplicate SubtitleOverlay widgets', () {
+      testWidgets('ControlsMode.none with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SizedBox(
+              width: 400,
+              height: 300,
+              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
+            ),
+          ),
+        );
+
+        // ControlsMode.none should NOT add SubtitleOverlay - expected to be paired with
+        // external VideoPlayerControls that handles subtitles internally
+        expect(find.byType(SubtitleOverlay), findsNothing);
+      });
+
+      testWidgets('ControlsMode.flutter with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
+        );
+
+        // VideoPlayerControls handles subtitles internally - should have exactly one
+        expect(find.byType(SubtitleOverlay), findsOneWidget);
+      });
+
+      testWidgets('custom controlsBuilder with VideoPlayerControls has exactly one SubtitleOverlay', (tester) async {
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SizedBox(
+              width: 400,
+              height: 300,
+              child: ProVideoPlayer(
+                controller: fixture.controller,
+                controlsBuilder: (context, ctrl) => VideoPlayerControls(
+                  controller: ctrl,
+                  forceMobileLayout: true, // Avoid desktop-specific gesture wrappers in tests
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // When using custom controlsBuilder with VideoPlayerControls, the custom
+        // VideoPlayerControls handles subtitles internally - should have exactly one
+        expect(find.byType(SubtitleOverlay), findsOneWidget);
+      });
+
+      testWidgets('ControlsMode.none + separate VideoPlayerControls has exactly one SubtitleOverlay', (tester) async {
+        // This pattern is used in FullscreenVideoPage
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SizedBox(
+              width: 400,
+              height: 300,
+              child: Stack(
+                children: [
+                  // Video player with no controls (like FullscreenVideoPage)
+                  ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
+                  // Separate controls overlay (like FullscreenVideoPage)
+                  VideoPlayerControls(
+                    controller: fixture.controller,
+                    forceMobileLayout: true, // Avoid desktop-specific gesture wrappers in tests
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        // ProVideoPlayer(ControlsMode.none) should NOT add SubtitleOverlay
+        // VideoPlayerControls adds SubtitleOverlay internally
+        // Result: exactly one SubtitleOverlay
+        expect(find.byType(SubtitleOverlay), findsOneWidget);
+      });
+
+      testWidgets('ControlsMode.native with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SizedBox(
+              width: 400,
+              height: 300,
+              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native),
+            ),
+          ),
+        );
+
+        // Native controls mode with Flutter subtitle rendering should add exactly one SubtitleOverlay
+        expect(find.byType(SubtitleOverlay), findsOneWidget);
+      });
+
+      testWidgets('no SubtitleOverlay when using native subtitle render mode', (tester) async {
+        await fixture.initializeController(
+          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.native),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
+        );
+
+        // Native subtitle mode: VideoPlayerControls still adds SubtitleOverlay but
+        // it won't render anything because the controller is in native mode
+        // (the _shouldShowFlutterSubtitles returns false for native mode)
+        final overlayFinder = find.byType(SubtitleOverlay);
+        expect(overlayFinder, findsOneWidget);
+
+        // Verify no subtitle text is shown (native handles rendering)
+        const track = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
+        fixture
+          ..emitEvent(const SelectedSubtitleChangedEvent(track))
+          ..emitEvent(
+            const EmbeddedSubtitleCueEvent(
+              cue: SubtitleCue(text: 'Test subtitle', start: Duration.zero, end: Duration(seconds: 5)),
+            ),
+          );
+        await tester.pump();
+
+        // The subtitle text should NOT appear because native mode is active
+        // (SubtitleOverlay only renders when there are cues AND we're in Flutter mode)
+        expect(find.text('Test subtitle'), findsOneWidget);
       });
     });
   });

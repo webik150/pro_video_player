@@ -156,8 +156,13 @@ class EventCoordinator {
 
       case SubtitleTracksChangedEvent(:final tracks):
         // Only update if subtitles are enabled
+        _Logger.log(
+          'SubtitleTracksChangedEvent received: ${tracks.length} tracks, subtitlesEnabled=${getOptions().subtitlesEnabled}',
+          tag: 'Controller',
+        );
         if (getOptions().subtitlesEnabled) {
           setValue(getValue().copyWith(subtitleTracks: tracks));
+          _Logger.log('SubtitleTracksChangedEvent: updated value with ${tracks.length} tracks', tag: 'Controller');
           // Auto-select subtitle if configured
           final value = getValue();
           if (getOptions().showSubtitlesByDefault && tracks.isNotEmpty && value.selectedSubtitleTrack == null) {
@@ -168,6 +173,11 @@ class EventCoordinator {
       case SelectedSubtitleChangedEvent(:final track):
         if (getOptions().subtitlesEnabled) {
           setValue(getValue().copyWith(selectedSubtitleTrack: track, clearSelectedSubtitle: track == null));
+          // Extract embedded subtitles for Flutter rendering when track is selected
+          // This handles both user selection and native auto-selection
+          if (track != null) {
+            trackManager.extractEmbeddedSubtitlesIfNeeded(track);
+          }
         }
 
       case PipStateChangedEvent(:final isActive):
@@ -199,7 +209,9 @@ class EventCoordinator {
         setValue(getValue().copyWith(volume: volume));
 
       case AudioTracksChangedEvent(:final tracks):
+        _Logger.log('AudioTracksChangedEvent received: ${tracks.length} tracks', tag: 'Controller');
         setValue(getValue().copyWith(audioTracks: tracks));
+        _Logger.log('AudioTracksChangedEvent: updated value with ${tracks.length} tracks', tag: 'Controller');
 
       case SelectedAudioChangedEvent(:final track):
         setValue(getValue().copyWith(selectedAudioTrack: track, clearSelectedAudio: track == null));

@@ -30,19 +30,19 @@ enum SubtitleRenderMode {
   /// across all layout modes (native, flutter, none, custom).
   flutter,
 
-  /// Automatic selection - defaults to native rendering.
+  /// Automatic selection - defaults to Flutter rendering.
   ///
-  /// In auto mode, subtitles are rendered natively by the platform for all
-  /// layout modes (native controls, Flutter controls, none, custom). This
-  /// provides the platform's native subtitle styling by default.
+  /// In auto mode, subtitles are rendered by Flutter's SubtitleOverlay widget,
+  /// enabling customizable styling via `SubtitleStyle` and consistent appearance
+  /// across all platforms and layout modes.
   ///
-  /// Users can opt-in to Flutter subtitle rendering (for custom styling and
-  /// cross-platform consistency) by explicitly calling:
+  /// Users can opt-in to native subtitle rendering (for platform-specific styling)
+  /// by explicitly calling:
   /// ```dart
-  /// await controller.setSubtitleRenderMode(SubtitleRenderMode.flutter);
+  /// await controller.setSubtitleRenderMode(SubtitleRenderMode.native);
   /// ```
   ///
-  /// This is the default mode providing native platform styling out of the box.
+  /// This is the default mode providing cross-platform consistency out of the box.
   auto,
 }
 

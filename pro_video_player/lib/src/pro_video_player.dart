@@ -218,20 +218,17 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
       return videoView;
     }
 
-    // No controls mode (without custom builder): video + optional subtitle overlay
+    // No controls mode (without custom builder): video only
+    // Don't add SubtitleOverlay here - ControlsMode.none is typically used
+    // alongside a separate VideoPlayerControls widget that handles subtitles.
+    // Adding one here would cause duplicates. Users who want subtitles without
+    // controls can add SubtitleOverlay manually or use a custom controlsBuilder.
     if (widget.controlsMode == ControlsMode.none && widget.controlsBuilder == null) {
-      if (shouldShowSubtitleOverlay) {
-        return Stack(
-          children: [
-            videoView,
-            SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
-          ],
-        );
-      }
       return videoView;
     }
 
     // Flutter controls mode or custom builder: video + optional subtitle overlay + controls
+    final hasCustomBuilder = widget.controlsBuilder != null;
     final controls =
         widget.controlsBuilder?.call(context, widget.controller) ??
         VideoPlayerControls(
@@ -240,12 +237,17 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
           renderSubtitlesInternally: !shouldShowSubtitleOverlay,
         );
 
+    // When using a custom builder, don't add SubtitleOverlay here - the custom
+    // builder is responsible for subtitles (e.g., via VideoPlayerControls with
+    // its own SubtitleOverlay). Adding one here would cause duplicates.
+    final showOverlayAtThisLevel = shouldShowSubtitleOverlay && !hasCustomBuilder;
+
     return KeyedSubtree(
       key: ValueKey(playerId),
       child: Stack(
         children: [
           videoView,
-          if (shouldShowSubtitleOverlay) SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
+          if (showOverlayAtThisLevel) SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
           controls,
         ],
       ),
@@ -266,9 +268,9 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
     if (renderMode == SubtitleRenderMode.flutter) return true;
     if (renderMode == SubtitleRenderMode.native) return false;
 
-    // Auto mode: default to native subtitle rendering for both
-    // flutter and native layout modes. Users can opt-in to Flutter
-    // rendering via setSubtitleRenderMode(SubtitleRenderMode.flutter).
-    return false;
+    // Auto mode: default to Flutter subtitle rendering for customizable
+    // styling and cross-platform consistency. Users can opt-in to native
+    // rendering via setSubtitleRenderMode(SubtitleRenderMode.native).
+    return true;
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show protected;
+
 import 'pigeon_generated/messages.g.dart';
 import 'pro_video_player_logger.dart';
 import 'pro_video_player_platform.dart';
@@ -54,6 +56,11 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
     final optionsMessage = _convertOptions(options);
 
     final playerId = await _hostApi.create(sourceMessage, optionsMessage);
+
+    // Create event stream controller immediately to avoid race condition
+    // where native sends events (like track discovery) before Dart subscribes.
+    // Without this, events sent during initialization would be dropped.
+    _eventStreamControllers[playerId] = StreamController<VideoPlayerEvent>.broadcast();
 
     return playerId;
   }
@@ -531,6 +538,16 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
     _eventStreamControllers[playerId]?.add(event);
   }
 
+  /// Adds an event from EventChannel to the unified event stream.
+  ///
+  /// Platform implementations should call this method to forward EventChannel
+  /// events to the same stream that receives Pigeon events, ensuring all events
+  /// are delivered through a single unified stream.
+  @protected
+  void addEventChannelEvent(int playerId, VideoPlayerEvent event) {
+    _addEvent(playerId, event);
+  }
+
   // ==================== ProVideoPlayerFlutterApi Implementation ====================
   // Low-frequency events received from native platforms via Pigeon @FlutterApi
 
@@ -603,6 +620,10 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
 
   @override
   void onSubtitleTracksChanged(int playerId, List<SubtitleTrackMessage?> tracks) {
+    ProVideoPlayerLogger.log(
+      'onSubtitleTracksChanged: playerId=$playerId, tracks=${tracks.length}',
+      tag: 'PigeonCallback',
+    );
     final subtitleTracks = tracks
         .whereType<SubtitleTrackMessage>()
         .map(
@@ -614,11 +635,19 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
           ),
         )
         .toList();
+    ProVideoPlayerLogger.log(
+      'onSubtitleTracksChanged: emitting event with ${subtitleTracks.length} tracks',
+      tag: 'PigeonCallback',
+    );
     _addEvent(playerId, SubtitleTracksChangedEvent(subtitleTracks));
   }
 
   @override
   void onAudioTracksChanged(int playerId, List<AudioTrackMessage?> tracks) {
+    ProVideoPlayerLogger.log(
+      'onAudioTracksChanged: playerId=$playerId, tracks=${tracks.length}',
+      tag: 'PigeonCallback',
+    );
     final audioTracks = tracks
         .whereType<AudioTrackMessage>()
         .map(
@@ -630,6 +659,10 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
           ),
         )
         .toList();
+    ProVideoPlayerLogger.log(
+      'onAudioTracksChanged: emitting event with ${audioTracks.length} tracks',
+      tag: 'PigeonCallback',
+    );
     _addEvent(playerId, AudioTracksChangedEvent(audioTracks));
   }
 
@@ -665,6 +698,14 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
     mixWithOthers: options.mixWithOthers,
     allowPip: options.allowPip,
     autoEnterPipOnBackground: options.autoEnterPipOnBackground,
+    subtitleRenderMode: switch (options.subtitleRenderMode) {
+      SubtitleRenderMode.auto => SubtitleRenderModeEnum.auto,
+      SubtitleRenderMode.native => SubtitleRenderModeEnum.native,
+      SubtitleRenderMode.flutter => SubtitleRenderModeEnum.flutter,
+    },
+    subtitlesEnabled: options.subtitlesEnabled,
+    showSubtitlesByDefault: options.showSubtitlesByDefault,
+    preferredSubtitleLanguage: options.preferredSubtitleLanguage,
   );
 
   /// Converts a Pigeon [PlatformInfoMessage] to [PlatformInfo].
@@ -701,4 +742,62 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
     SubtitleFormatEnum.ass => SubtitleFormat.ass,
     SubtitleFormatEnum.ttml => SubtitleFormat.ttml,
   };
+
+  // ==================== Codec Compatibility ====================
+
+  @override
+  Future<CodecCompatibility> checkCodecSupport(CodecInfo codec) async {
+    final message = CodecInfoMessage(
+      fourcc: codec.fourcc,
+      name: codec.name,
+      codecString: codec.codecString,
+      mimeType: codec.mimeType,
+    );
+    final result = await _hostApi.checkCodecSupport(message);
+    return _convertCodecCompatibility(result);
+  }
+
+  @override
+  Future<List<CodecCompatibility>> checkCodecsSupport(List<CodecInfo> codecs) async {
+    final messages = codecs
+        .map(
+          (codec) => CodecInfoMessage(
+            fourcc: codec.fourcc,
+            name: codec.name,
+            codecString: codec.codecString,
+            mimeType: codec.mimeType,
+          ),
+        )
+        .toList();
+    final results = await _hostApi.checkCodecsSupport(messages);
+    return results.whereType<CodecCompatibilityMessage>().map(_convertCodecCompatibility).toList();
+  }
+
+  @override
+  Future<List<String>> getSupportedCodecs() async {
+    final results = await _hostApi.getSupportedCodecs();
+    return results.whereType<String>().toList();
+  }
+
+  CodecCompatibility _convertCodecCompatibility(CodecCompatibilityMessage message) {
+    final codec = CodecInfo(
+      fourcc: message.codec.fourcc,
+      name: message.codec.name,
+      codecString: message.codec.codecString,
+      mimeType: message.codec.mimeType,
+    );
+    final supportLevel = switch (message.supportLevel) {
+      CodecSupportLevelEnum.supported => CodecSupportLevel.supported,
+      CodecSupportLevelEnum.probablySupported => CodecSupportLevel.probablySupported,
+      CodecSupportLevelEnum.notSupported => CodecSupportLevel.notSupported,
+      CodecSupportLevelEnum.unknown => CodecSupportLevel.unknown,
+    };
+    return CodecCompatibility(
+      codec: codec,
+      supportLevel: supportLevel,
+      message: message.message,
+      minimumOsVersion: message.minimumOsVersion,
+      alternativeCodecs: message.alternativeCodecs?.whereType<String>().toList() ?? const [],
+    );
+  }
 }

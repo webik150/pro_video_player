@@ -12,7 +12,6 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -137,7 +136,6 @@ void main() {
           closedCaptionFile: Future.value(SubRipCaptionFile('')),
           videoPlayerOptions: const VideoPlayerOptions(mixWithOthers: true),
           httpHeaders: const {'Authorization': 'Bearer token'},
-          viewType: VideoViewType.textureView,
         );
 
         expect(controller, isA<VideoPlayerController>());
@@ -171,7 +169,6 @@ void main() {
           closedCaptionFile: Future.value(SubRipCaptionFile('')),
           videoPlayerOptions: const VideoPlayerOptions(),
           httpHeaders: const {'Custom': 'Header'},
-          viewType: VideoViewType.textureView,
         );
 
         expect(controller, isA<VideoPlayerController>());
@@ -186,7 +183,6 @@ void main() {
           package: 'my_package',
           closedCaptionFile: Future.value(SubRipCaptionFile('')),
           videoPlayerOptions: const VideoPlayerOptions(),
-          viewType: VideoViewType.textureView,
         );
 
         expect(controller, isA<VideoPlayerController>());
@@ -200,7 +196,6 @@ void main() {
           Uri.parse('content://media/video/123'),
           closedCaptionFile: Future.value(SubRipCaptionFile('')),
           videoPlayerOptions: const VideoPlayerOptions(),
-          viewType: VideoViewType.textureView,
         );
 
         expect(controller, isA<VideoPlayerController>());
@@ -307,63 +302,63 @@ void main() {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.initialize, isA<Function>());
         // Type check: initialize() -> Future<void>
-        final Future<void> Function() initMethod = controller.initialize;
+        final initMethod = controller.initialize;
         expect(initMethod, isNotNull);
       });
 
       test('play returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.play, isA<Function>());
-        final Future<void> Function() playMethod = controller.play;
+        final playMethod = controller.play;
         expect(playMethod, isNotNull);
       });
 
       test('pause returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.pause, isA<Function>());
-        final Future<void> Function() pauseMethod = controller.pause;
+        final pauseMethod = controller.pause;
         expect(pauseMethod, isNotNull);
       });
 
       test('seekTo accepts Duration and returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.seekTo, isA<Function>());
-        final Future<void> Function(Duration) seekMethod = controller.seekTo;
+        final seekMethod = controller.seekTo;
         expect(seekMethod, isNotNull);
       });
 
       test('setVolume accepts double and returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.setVolume, isA<Function>());
-        final Future<void> Function(double) volumeMethod = controller.setVolume;
+        final volumeMethod = controller.setVolume;
         expect(volumeMethod, isNotNull);
       });
 
       test('setPlaybackSpeed accepts double and returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.setPlaybackSpeed, isA<Function>());
-        final Future<void> Function(double) speedMethod = controller.setPlaybackSpeed;
+        final speedMethod = controller.setPlaybackSpeed;
         expect(speedMethod, isNotNull);
       });
 
       test('setLooping accepts bool and returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.setLooping, isA<Function>());
-        final Future<void> Function(bool) loopMethod = controller.setLooping;
+        final loopMethod = controller.setLooping;
         expect(loopMethod, isNotNull);
       });
 
       test('setClosedCaptionFile accepts Future<ClosedCaptionFile>? and returns Future<void>', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.setClosedCaptionFile, isA<Function>());
-        final Future<void> Function(Future<ClosedCaptionFile>?) captionMethod = controller.setClosedCaptionFile;
+        final captionMethod = controller.setClosedCaptionFile;
         expect(captionMethod, isNotNull);
       });
 
       test('setCaptionOffset accepts Duration and returns void (sync)', () {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.setCaptionOffset, isA<Function>());
-        final void Function(Duration) offsetMethod = controller.setCaptionOffset;
+        final offsetMethod = controller.setCaptionOffset;
         expect(offsetMethod, isNotNull);
       });
 
@@ -371,7 +366,7 @@ void main() {
         final controller = VideoPlayerController.networkUrl(Uri.parse('https://example.com/video.mp4'));
         expect(controller.dispose, isA<Function>());
         // dispose() -> Future<void>
-        final Future<void> Function() disposeMethod = controller.dispose;
+        final disposeMethod = controller.dispose;
         expect(disposeMethod, isNotNull);
       });
     });
@@ -382,17 +377,13 @@ void main() {
           duration: Duration(minutes: 5),
           size: Size(1920, 1080),
           position: Duration(seconds: 30),
-          caption: Caption.none,
           captionOffset: Duration(milliseconds: 500),
           buffered: [DurationRange(Duration.zero, Duration(minutes: 1))],
           isInitialized: true,
           isPlaying: true,
-          isLooping: false,
-          isBuffering: false,
           volume: 0.8,
           playbackSpeed: 1.5,
           rotationCorrection: 90,
-          errorDescription: null,
         );
 
         // Verify all properties exist and have correct types
@@ -557,12 +548,7 @@ void main() {
       });
 
       test('VideoPlayerWebOptionsControls.enabled allows customization', () {
-        const controls = VideoPlayerWebOptionsControls.enabled(
-          allowDownload: false,
-          allowFullscreen: false,
-          allowPlaybackRate: true,
-          allowPictureInPicture: true,
-        );
+        const controls = VideoPlayerWebOptionsControls.enabled(allowDownload: false, allowFullscreen: false);
 
         expect(controls.enabled, isTrue);
         expect(controls.allowDownload, isFalse);

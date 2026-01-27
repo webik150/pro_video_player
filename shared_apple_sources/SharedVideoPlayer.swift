@@ -98,6 +98,18 @@ class SharedVideoPlayer: NSObject {
     private var nextExternalSubtitleId: Int = 0
     private var selectedExternalSubtitleId: String?
 
+    // Subtitle render mode
+    // When "flutter" mode is active, native subtitle rendering is disabled
+    // but we remember the selected track so it can be restored when switching back to "native"
+    private var subtitleRenderMode: String = "native"  // "native", "flutter", or "auto"
+
+    /// Effective render mode - "auto" defaults to "flutter"
+    private var effectiveSubtitleRenderMode: String {
+        return (subtitleRenderMode == "auto") ? "flutter" : subtitleRenderMode
+    }
+
+    private var selectedEmbeddedSubtitleIndex: Int?  // Remember selection when switching to flutter mode
+
     // Casting (AirPlay)
     private var allowCasting: Bool = true
     private var castState: String = "notConnected"
@@ -156,6 +168,8 @@ class SharedVideoPlayer: NSObject {
         allowCasting = options["allowCasting"] as? Bool ?? true
         preventScreenSleep = options["preventScreenSleep"] as? Bool ?? true
         preferredSubtitleLanguage = options["preferredSubtitleLanguage"] as? String
+        subtitleRenderMode = options["subtitleRenderMode"] as? String ?? "native"
+        verboseLog("Initialized with subtitleRenderMode: \(subtitleRenderMode)", tag: "Subtitles")
 
         var url: URL?
 
@@ -221,7 +235,19 @@ class SharedVideoPlayer: NSObject {
                 playerItem.preferredPeakBitRate = Double(maxBitrate)
             }
 
-            let player = AVPlayer(playerItem: playerItem)
+            // Create AVPlayer WITHOUT the item first, so we can configure it before loading content
+            let player = AVPlayer()
+
+            // Disable automatic media selection when using Flutter subtitle rendering.
+            // This MUST be set BEFORE assigning the playerItem, otherwise AVPlayer may
+            // auto-select subtitles based on HLS DEFAULT=YES tracks or accessibility settings.
+            if effectiveSubtitleRenderMode == "flutter" {
+                player.appliesMediaSelectionCriteriaAutomatically = false
+                verboseLog("Disabled automatic media selection BEFORE loading item (Flutter subtitle mode)", tag: "Subtitles")
+            }
+
+            // Now assign the playerItem - this starts the loading process
+            player.replaceCurrentItem(with: playerItem)
 
             // Create the layer synchronously to ensure it's available when buildView() is called
             DispatchQueue.main.sync {
@@ -575,11 +601,23 @@ class SharedVideoPlayer: NSObject {
                 self?.extractAndSendVideoMetadata()
             }
 
-            if subtitlesEnabled {
-                notifySubtitleTracks()
+            // For HLS/DASH streams, media selection groups (audio/subtitle tracks) load asynchronously
+            // We need to wait for availableMediaCharacteristicsWithMediaSelectionOptions to be ready
+            let subtitlesEnabledCopy = subtitlesEnabled
+            verboseLog("Loading media selection options asynchronously...", tag: "Tracks")
+            asset.loadValuesAsynchronously(forKeys: ["availableMediaCharacteristicsWithMediaSelectionOptions"]) { [weak self] in
+                guard let self = self else { return }
+                var error: NSError?
+                let status = asset.statusOfValue(forKey: "availableMediaCharacteristicsWithMediaSelectionOptions", error: &error)
+                let characteristics = asset.availableMediaCharacteristicsWithMediaSelectionOptions
+                verboseLog("Media selection loaded: status=\(status.rawValue), characteristics=\(characteristics), error=\(error?.localizedDescription ?? "none")", tag: "Tracks")
+                DispatchQueue.main.async {
+                    if subtitlesEnabledCopy {
+                        self.notifySubtitleTracks()
+                    }
+                    self.notifyAudioTracks()
+                }
             }
-
-            notifyAudioTracks()
         case .failed:
             let errorMsg = item.error?.localizedDescription ?? "Unknown error"
 
@@ -765,44 +803,63 @@ class SharedVideoPlayer: NSObject {
     // MARK: - Track Handling
 
     func notifySubtitleTracks() {
-        guard let asset = playerItem?.asset else { return }
+        guard let asset = playerItem?.asset else {
+            verboseLog("notifySubtitleTracks: no asset", tag: "Tracks")
+            return
+        }
 
         let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
+        verboseLog("notifySubtitleTracks: legible group = \(group != nil ? "found" : "nil"), options count = \(group?.options.count ?? 0)", tag: "Tracks")
         guard let options = group?.options else { return }
 
         var tracks: [[String: Any]] = []
         for (index, option) in options.enumerated() {
             let language = extractLanguageCode(from: option)
+            let label = option.displayName.isEmpty ? (language ?? "Track \(index + 1)") : option.displayName
             let track: [String: Any] = [
                 "id": "0:\(index)",
-                "label": "",
+                "label": label,
                 "language": language as Any,
                 "isDefault": index == 0,
             ]
             tracks.append(track)
         }
 
-        if !tracks.isEmpty {
+        if !tracks.isEmpty, let group = group {
+            verboseLog("Sending subtitleTracksChanged event with \(tracks.count) tracks", tag: "Tracks")
             sendEvent(["type": "subtitleTracksChanged", "tracks": tracks])
 
+            // Check if we're in Flutter mode - need to ensure native subtitles are disabled
+            if effectiveSubtitleRenderMode == "flutter" {
+                // Always deselect native subtitles in Flutter mode
+                // AVPlayer may auto-enable subtitles based on accessibility settings or HLS defaults
+                playerItem?.select(nil, in: group)
+                verboseLog("Deselected native subtitles (Flutter mode)", tag: "Subtitles")
+            }
+
             if showSubtitlesByDefault {
-                autoSelectSubtitle(options: options, group: group!)
+                autoSelectSubtitle(options: options, group: group)
             }
         }
     }
 
     func notifyAudioTracks() {
-        guard let asset = playerItem?.asset else { return }
+        guard let asset = playerItem?.asset else {
+            verboseLog("notifyAudioTracks: no asset", tag: "Tracks")
+            return
+        }
 
         let group = asset.mediaSelectionGroup(forMediaCharacteristic: .audible)
+        verboseLog("notifyAudioTracks: audible group = \(group != nil ? "found" : "nil"), options count = \(group?.options.count ?? 0)", tag: "Tracks")
         guard let options = group?.options else { return }
 
         var tracks: [[String: Any]] = []
         for (index, option) in options.enumerated() {
             let language = extractLanguageCode(from: option)
+            let label = option.displayName.isEmpty ? (language ?? "Track \(index + 1)") : option.displayName
             let track: [String: Any] = [
                 "id": "0:\(index)",
-                "label": "",
+                "label": label,
                 "language": language as Any,
                 "isDefault": index == 0,
             ]
@@ -810,6 +867,7 @@ class SharedVideoPlayer: NSObject {
         }
 
         if !tracks.isEmpty {
+            verboseLog("Sending audioTracksChanged event with \(tracks.count) tracks", tag: "Tracks")
             sendEvent(["type": "audioTracksChanged", "tracks": tracks])
         }
     }
@@ -830,8 +888,34 @@ class SharedVideoPlayer: NSObject {
 
         selectedOption = selectedOption ?? options.first
 
-        if let option = selectedOption {
-            playerItem?.select(option, in: group)
+        if let option = selectedOption, let index = options.firstIndex(of: option) {
+            // Remember the selected index
+            selectedEmbeddedSubtitleIndex = index
+
+            // Build track data for the event
+            let language = extractLanguageCode(from: option)
+            let label = option.displayName.isEmpty ? (language ?? "Track \(index + 1)") : option.displayName
+            let trackData: [String: Any] = [
+                "id": "0:\(index)",
+                "label": label,
+                "language": language as Any,
+                "isDefault": index == 0,
+            ]
+
+            // Check subtitle render mode - only enable native rendering if not in flutter mode
+            if effectiveSubtitleRenderMode == "flutter" {
+                // In flutter mode, actively deselect native subtitle rendering
+                // Just not selecting isn't enough - AVPlayer may have default selection
+                playerItem?.select(nil, in: group)
+                verboseLog("Auto-selected subtitle in flutter mode (native rendering disabled): \(option.displayName)", tag: "Subtitles")
+            } else {
+                // In native mode, actually select the track for native rendering
+                playerItem?.select(option, in: group)
+                verboseLog("Auto-selected subtitle in native mode: \(option.displayName)", tag: "Subtitles")
+            }
+
+            // Always send the event so Dart knows which track is selected
+            sendEvent(["type": "selectedSubtitleChanged", "track": trackData])
         }
     }
 
@@ -1068,6 +1152,9 @@ class SharedVideoPlayer: NSObject {
     func setSubtitleTrack(_ track: [String: Any]?) {
         guard subtitlesEnabled else { return }
 
+        // Check if native rendering is enabled
+        let nativeRenderingEnabled = (effectiveSubtitleRenderMode == "native")
+
         if let trackData = track, let idString = trackData["id"] as? String {
             // Check if this is an external subtitle track
             if idString.hasPrefix("ext-") {
@@ -1077,7 +1164,8 @@ class SharedVideoPlayer: NSObject {
                     return
                 }
 
-                // Deselect any embedded subtitle
+                // Deselect any embedded subtitle (always, regardless of render mode)
+                selectedEmbeddedSubtitleIndex = nil
                 if let asset = playerItem?.asset,
                    let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
                 {
@@ -1106,18 +1194,79 @@ class SharedVideoPlayer: NSObject {
             if trackIndex < options.count {
                 // Clear external subtitle selection when selecting embedded
                 selectedExternalSubtitleId = nil
-                playerItem?.select(options[trackIndex], in: group)
+                // Remember the selected embedded subtitle index
+                selectedEmbeddedSubtitleIndex = trackIndex
+
+                // Only enable native rendering if not in Flutter mode
+                if nativeRenderingEnabled {
+                    playerItem?.select(options[trackIndex], in: group)
+                } else {
+                    // In Flutter mode, deselect native subtitle but remember the selection
+                    playerItem?.select(nil, in: group)
+                    verboseLog("Embedded subtitle \(trackIndex) selected but native rendering disabled (Flutter mode)", tag: "Subtitles")
+                }
                 sendEvent(["type": "selectedSubtitleChanged", "track": track as Any])
             }
         } else {
             // Disable all subtitles
             selectedExternalSubtitleId = nil
+            selectedEmbeddedSubtitleIndex = nil
             if let asset = playerItem?.asset,
                let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
             {
                 playerItem?.select(nil, in: group)
             }
             sendEvent(["type": "selectedSubtitleChanged", "track": NSNull()])
+        }
+    }
+
+    /// Sets the subtitle render mode.
+    ///
+    /// - Parameter mode: "native", "flutter", or "auto"
+    ///   - "native": Subtitles are rendered by the native player (AVPlayer)
+    ///   - "flutter": Subtitles are rendered by Flutter's SubtitleOverlay widget
+    ///   - "auto": Same as "flutter" (default)
+    ///
+    /// When switching to "flutter" mode, native subtitle rendering is disabled
+    /// but the selected track is remembered. When switching back to "native",
+    /// the previously selected track is restored.
+    func setSubtitleRenderMode(_ mode: String) {
+        let previousMode = subtitleRenderMode
+        subtitleRenderMode = mode
+
+        verboseLog("setSubtitleRenderMode: \(previousMode) -> \(mode)", tag: "Subtitles")
+
+        guard let asset = playerItem?.asset,
+              let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible)
+        else {
+            return
+        }
+
+        let effectiveMode = (mode == "auto") ? "flutter" : mode
+
+        if effectiveMode == "flutter" {
+            // Switching to Flutter mode: disable native subtitle rendering
+            // Disable automatic media selection to prevent AVPlayer from re-enabling subtitles
+            player?.appliesMediaSelectionCriteriaAutomatically = false
+
+            // Remember the currently selected embedded subtitle so we can restore it later
+            if let currentSelection = playerItem?.currentMediaSelection.selectedMediaOption(in: group),
+               let index = group.options.firstIndex(of: currentSelection)
+            {
+                selectedEmbeddedSubtitleIndex = index
+            }
+            // Deselect native subtitles (but keep the track selection in Dart state)
+            playerItem?.select(nil, in: group)
+            verboseLog("Native subtitle rendering disabled for Flutter mode", tag: "Subtitles")
+        } else {
+            // Switching to Native mode: restore native subtitle rendering
+            // Re-enable automatic media selection
+            player?.appliesMediaSelectionCriteriaAutomatically = true
+
+            if let savedIndex = selectedEmbeddedSubtitleIndex, savedIndex < group.options.count {
+                playerItem?.select(group.options[savedIndex], in: group)
+                verboseLog("Restored native subtitle: index \(savedIndex)", tag: "Subtitles")
+            }
         }
     }
 
@@ -2209,6 +2358,7 @@ class SharedVideoPlayer: NSObject {
             }
 
         case "subtitleTracksChanged":
+            verboseLog("subtitleTracksChanged: flutterApi=\(flutterApi != nil ? "set" : "nil")", tag: "Tracks")
             if let flutterApi = flutterApi, let tracksArray = event["tracks"] as? [[String: Any]] {
                 let tracks: [SubtitleTrackMessage?] = tracksArray.map { trackDict in
                     guard let id = trackDict["id"] as? String else { return nil }
@@ -2240,6 +2390,7 @@ class SharedVideoPlayer: NSObject {
             }
 
         case "audioTracksChanged":
+            verboseLog("audioTracksChanged: flutterApi=\(flutterApi != nil ? "set" : "nil")", tag: "Tracks")
             if let flutterApi = flutterApi, let tracksArray = event["tracks"] as? [[String: Any]] {
                 let tracks: [AudioTrackMessage?] = tracksArray.map { trackDict in
                     guard let id = trackDict["id"] as? String else { return nil }
