@@ -664,6 +664,40 @@ class VideoMetadataMessage {
   }
 }
 
+/// Content fingerprint result message.
+///
+/// Contains a hash computed from multi-position content samples,
+/// useful for video deduplication that can distinguish edited versions.
+class ContentFingerprintMessage {
+  ContentFingerprintMessage({this.fingerprint, this.fileSize, this.error});
+
+  /// Hash of content samples (hex string).
+  ///
+  /// Computed from 8KB samples at beginning, middle, and end of the file.
+  String? fingerprint;
+
+  /// File size in bytes.
+  ///
+  /// Included for combining with metadata fingerprint.
+  int? fileSize;
+
+  /// Error message if fingerprint extraction failed.
+  String? error;
+
+  Object encode() {
+    return <Object?>[fingerprint, fileSize, error];
+  }
+
+  static ContentFingerprintMessage decode(Object result) {
+    result as List<Object?>;
+    return ContentFingerprintMessage(
+      fingerprint: result[0] as String?,
+      fileSize: result[1] as int?,
+      error: result[2] as String?,
+    );
+  }
+}
+
 /// Media metadata for platform controls.
 class MediaMetadataMessage {
   MediaMetadataMessage({this.title, this.artist, this.album, this.artworkUrl, this.duration});
@@ -1007,23 +1041,26 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is VideoMetadataMessage) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    } else if (value is MediaMetadataMessage) {
+    } else if (value is ContentFingerprintMessage) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleSourceMessage) {
+    } else if (value is MediaMetadataMessage) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    } else if (value is ExternalSubtitleTrackMessage) {
+    } else if (value is SubtitleSourceMessage) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    } else if (value is CodecInfoMessage) {
+    } else if (value is ExternalSubtitleTrackMessage) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    } else if (value is CodecCompatibilityMessage) {
+    } else if (value is CodecInfoMessage) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerEventMessage) {
+    } else if (value is CodecCompatibilityMessage) {
       buffer.putUint8(155);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoPlayerEventMessage) {
+      buffer.putUint8(156);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1086,16 +1123,18 @@ class _PigeonCodec extends StandardMessageCodec {
       case 149:
         return VideoMetadataMessage.decode(readValue(buffer)!);
       case 150:
-        return MediaMetadataMessage.decode(readValue(buffer)!);
+        return ContentFingerprintMessage.decode(readValue(buffer)!);
       case 151:
-        return SubtitleSourceMessage.decode(readValue(buffer)!);
+        return MediaMetadataMessage.decode(readValue(buffer)!);
       case 152:
-        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+        return SubtitleSourceMessage.decode(readValue(buffer)!);
       case 153:
-        return CodecInfoMessage.decode(readValue(buffer)!);
+        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
       case 154:
-        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+        return CodecInfoMessage.decode(readValue(buffer)!);
       case 155:
+        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+      case 156:
         return VideoPlayerEventMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -3100,6 +3139,51 @@ class ProVideoPlayerHostApi {
       );
     } else {
       return (pigeonVar_replyList[0] as Uint8List?);
+    }
+  }
+
+  /// Extracts a content-based fingerprint for video deduplication.
+  ///
+  /// Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+  /// a hash. This allows distinguishing trimmed versions of the same video
+  /// that would have identical metadata.
+  ///
+  /// Returns a [ContentFingerprintMessage] containing:
+  /// - fingerprint: SHA-256 hash of content samples (hex string)
+  /// - fileSize: File size in bytes (for local files)
+  /// - error: Error message if extraction failed
+  ///
+  /// Platform implementations:
+  /// - Local files: Direct file reads with 8KB at start, middle, end
+  /// - Network URLs: HTTP Range requests (may not be supported by all servers)
+  /// - Assets: AssetManager reads
+  ///
+  /// The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+  /// for robust deduplication.
+  Future<ContentFingerprintMessage> extractContentFingerprint(VideoSourceMessage source) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractContentFingerprint$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_channel.send(<Object?>[source]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as ContentFingerprintMessage?)!;
     }
   }
 }

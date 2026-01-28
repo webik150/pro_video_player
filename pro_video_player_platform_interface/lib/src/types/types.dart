@@ -13,6 +13,8 @@ export 'codec_info.dart';
 export 'container_metadata.dart';
 export 'container_track.dart';
 export 'container_track_type.dart';
+export 'content_fingerprint.dart';
+export 'content_fingerprint_exception.dart';
 export 'controls_mode.dart';
 export 'data_source_type.dart';
 export 'duration_range.dart';

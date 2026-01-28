@@ -859,6 +859,56 @@ class VideoMetadataMessage {
 };
 
 
+// Content fingerprint result message.
+//
+// Contains a hash computed from multi-position content samples,
+// useful for video deduplication that can distinguish edited versions.
+//
+// Generated class from Pigeon that represents data sent in messages.
+class ContentFingerprintMessage {
+ public:
+  // Constructs an object setting all non-nullable fields.
+  ContentFingerprintMessage();
+
+  // Constructs an object setting all fields.
+  explicit ContentFingerprintMessage(
+    const std::string* fingerprint,
+    const int64_t* file_size,
+    const std::string* error);
+
+  // Hash of content samples (hex string).
+  //
+  // Computed from 8KB samples at beginning, middle, and end of the file.
+  const std::string* fingerprint() const;
+  void set_fingerprint(const std::string_view* value_arg);
+  void set_fingerprint(std::string_view value_arg);
+
+  // File size in bytes.
+  //
+  // Included for combining with metadata fingerprint.
+  const int64_t* file_size() const;
+  void set_file_size(const int64_t* value_arg);
+  void set_file_size(int64_t value_arg);
+
+  // Error message if fingerprint extraction failed.
+  const std::string* error() const;
+  void set_error(const std::string_view* value_arg);
+  void set_error(std::string_view value_arg);
+
+
+ private:
+  static ContentFingerprintMessage FromEncodableList(const flutter::EncodableList& list);
+  flutter::EncodableList ToEncodableList() const;
+  friend class ProVideoPlayerHostApi;
+  friend class ProVideoPlayerFlutterApi;
+  friend class PigeonInternalCodecSerializer;
+  std::optional<std::string> fingerprint_;
+  std::optional<int64_t> file_size_;
+  std::optional<std::string> error_;
+
+};
+
+
 // Media metadata for platform controls.
 //
 // Generated class from Pigeon that represents data sent in messages.
@@ -1593,6 +1643,27 @@ class ProVideoPlayerHostApi {
     const int64_t* max_height,
     const int64_t* quality,
     std::function<void(ErrorOr<std::optional<std::vector<uint8_t>>> reply)> result) = 0;
+  // Extracts a content-based fingerprint for video deduplication.
+  //
+  // Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+  // a hash. This allows distinguishing trimmed versions of the same video
+  // that would have identical metadata.
+  //
+  // Returns a [ContentFingerprintMessage] containing:
+  // - fingerprint: SHA-256 hash of content samples (hex string)
+  // - fileSize: File size in bytes (for local files)
+  // - error: Error message if extraction failed
+  //
+  // Platform implementations:
+  // - Local files: Direct file reads with 8KB at start, middle, end
+  // - Network URLs: HTTP Range requests (may not be supported by all servers)
+  // - Assets: AssetManager reads
+  //
+  // The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+  // for robust deduplication.
+  virtual void ExtractContentFingerprint(
+    const VideoSourceMessage& source,
+    std::function<void(ErrorOr<ContentFingerprintMessage> reply)> result) = 0;
 
   // The codec used by ProVideoPlayerHostApi.
   static const flutter::StandardMessageCodec& GetCodec();

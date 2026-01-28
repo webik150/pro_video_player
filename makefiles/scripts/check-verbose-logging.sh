@@ -109,8 +109,8 @@ check_swift() {
                 continue
             fi
 
-            # Check for print( or NSLog( calls
-            if [[ "$line" =~ print\( ]] || [[ "$line" =~ NSLog\( ]]; then
+            # Check for print( or NSLog( calls (standalone, not part of another word like "fingerprint")
+            if [[ "$line" =~ [^[:alnum:]]print\( ]] || [[ "$line" =~ ^print\( ]] || [[ "$line" =~ NSLog\( ]]; then
                 local relative_file="${file#$ROOT_DIR/}"
                 local trimmed_line=$(echo "$line" | sed 's/^[[:space:]]*//' | cut -c1-60)
                 add_issue "$relative_file" "$line_num" "$trimmed_line"

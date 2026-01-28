@@ -314,13 +314,65 @@ class SharedVideoPlayer: NSObject {
     func extractAndSendMetadata() {
         guard let asset = playerItem?.asset else { return }
 
+        var eventData: [String: Any] = ["type": "metadataChanged"]
         let metadata = asset.commonMetadata
+
+        // Extract common metadata
         for item in metadata {
-            if item.commonKey == .commonKeyTitle, let title = item.stringValue {
-                sendEvent(["type": "metadataChanged", "title": title])
+            guard let key = item.commonKey else { continue }
+
+            switch key {
+            case .commonKeyTitle:
+                if let title = item.stringValue {
+                    eventData["title"] = title
+                }
+            case .commonKeyArtist, .commonKeyCreator, .commonKeyAuthor:
+                if eventData["artist"] == nil, let artist = item.stringValue {
+                    eventData["artist"] = artist
+                }
+            case .commonKeyAlbumName:
+                if let album = item.stringValue {
+                    eventData["album"] = album
+                }
+            case .commonKeyCreationDate:
+                if let dateString = item.stringValue {
+                    // Try to extract year from date string (format varies)
+                    if let year = extractYear(from: dateString) {
+                        eventData["year"] = year
+                    }
+                }
+            case .commonKeyType:
+                if let genre = item.stringValue {
+                    eventData["genre"] = genre
+                }
+            default:
                 break
             }
         }
+
+        // Only send if we have at least one metadata field beyond type
+        if eventData.count > 1 {
+            sendEvent(eventData)
+        }
+    }
+
+    /// Extracts a 4-digit year from a date string.
+    private func extractYear(from dateString: String) -> Int? {
+        // Try common date formats
+        let patterns = [
+            "^(\\d{4})",           // Year at start: "2023", "2023-01-15"
+            "(\\d{4})$",           // Year at end
+            "(\\d{4})-\\d{2}-\\d{2}", // ISO format: "2023-01-15"
+        ]
+
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: dateString, range: NSRange(dateString.startIndex..., in: dateString)),
+               let range = Range(match.range(at: 1), in: dateString) {
+                return Int(dateString[range])
+            }
+        }
+        return nil
     }
 
     /// Gets technical video metadata extracted from the current video.
@@ -378,15 +430,33 @@ class SharedVideoPlayer: NSObject {
                let formatDesc = formatDescriptions.first {
                 let codecType = CMFormatDescriptionGetMediaSubType(formatDesc)
                 metadata["audioCodec"] = codecFourCCToString(codecType)
+
+                // Audio sample rate and channels from format description
+                if let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)?.pointee {
+                    if asbd.mSampleRate > 0 {
+                        metadata["audioSampleRate"] = Int(asbd.mSampleRate)
+                    }
+                    if asbd.mChannelsPerFrame > 0 {
+                        metadata["audioChannels"] = Int(asbd.mChannelsPerFrame)
+                    }
+                }
             }
         }
 
-        // Container format from URL if available
+        // Container format and file size from URL if available
         if let urlAsset = asset as? AVURLAsset {
             let url = urlAsset.url
             let pathExtension = url.pathExtension.lowercased()
             if !pathExtension.isEmpty {
                 metadata["containerFormat"] = pathExtension
+            }
+
+            // File size for local files
+            if url.isFileURL {
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                   let size = attrs[.size] as? Int64 {
+                    metadata["fileSize"] = size
+                }
             }
         }
 

@@ -718,6 +718,46 @@ struct VideoMetadataMessage {
   }
 }
 
+/// Content fingerprint result message.
+///
+/// Contains a hash computed from multi-position content samples,
+/// useful for video deduplication that can distinguish edited versions.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct ContentFingerprintMessage {
+  /// Hash of content samples (hex string).
+  ///
+  /// Computed from 8KB samples at beginning, middle, and end of the file.
+  var fingerprint: String? = nil
+  /// File size in bytes.
+  ///
+  /// Included for combining with metadata fingerprint.
+  var fileSize: Int64? = nil
+  /// Error message if fingerprint extraction failed.
+  var error: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ContentFingerprintMessage? {
+    let fingerprint: String? = nilOrValue(pigeonVar_list[0])
+    let fileSize: Int64? = nilOrValue(pigeonVar_list[1])
+    let error: String? = nilOrValue(pigeonVar_list[2])
+
+    return ContentFingerprintMessage(
+      fingerprint: fingerprint,
+      fileSize: fileSize,
+      error: error
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      fingerprint,
+      fileSize,
+      error,
+    ]
+  }
+}
+
 /// Media metadata for platform controls.
 ///
 /// Generated class from Pigeon that represents data sent in messages.
@@ -1100,16 +1140,18 @@ private class PigeonMessagesPigeonCodecReader: FlutterStandardReader {
     case 149:
       return VideoMetadataMessage.fromList(self.readValue() as! [Any?])
     case 150:
-      return MediaMetadataMessage.fromList(self.readValue() as! [Any?])
+      return ContentFingerprintMessage.fromList(self.readValue() as! [Any?])
     case 151:
-      return SubtitleSourceMessage.fromList(self.readValue() as! [Any?])
+      return MediaMetadataMessage.fromList(self.readValue() as! [Any?])
     case 152:
-      return ExternalSubtitleTrackMessage.fromList(self.readValue() as! [Any?])
+      return SubtitleSourceMessage.fromList(self.readValue() as! [Any?])
     case 153:
-      return CodecInfoMessage.fromList(self.readValue() as! [Any?])
+      return ExternalSubtitleTrackMessage.fromList(self.readValue() as! [Any?])
     case 154:
-      return CodecCompatibilityMessage.fromList(self.readValue() as! [Any?])
+      return CodecInfoMessage.fromList(self.readValue() as! [Any?])
     case 155:
+      return CodecCompatibilityMessage.fromList(self.readValue() as! [Any?])
+    case 156:
       return VideoPlayerEventMessage.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -1182,23 +1224,26 @@ private class PigeonMessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? VideoMetadataMessage {
       super.writeByte(149)
       super.writeValue(value.toList())
-    } else if let value = value as? MediaMetadataMessage {
+    } else if let value = value as? ContentFingerprintMessage {
       super.writeByte(150)
       super.writeValue(value.toList())
-    } else if let value = value as? SubtitleSourceMessage {
+    } else if let value = value as? MediaMetadataMessage {
       super.writeByte(151)
       super.writeValue(value.toList())
-    } else if let value = value as? ExternalSubtitleTrackMessage {
+    } else if let value = value as? SubtitleSourceMessage {
       super.writeByte(152)
       super.writeValue(value.toList())
-    } else if let value = value as? CodecInfoMessage {
+    } else if let value = value as? ExternalSubtitleTrackMessage {
       super.writeByte(153)
       super.writeValue(value.toList())
-    } else if let value = value as? CodecCompatibilityMessage {
+    } else if let value = value as? CodecInfoMessage {
       super.writeByte(154)
       super.writeValue(value.toList())
-    } else if let value = value as? VideoPlayerEventMessage {
+    } else if let value = value as? CodecCompatibilityMessage {
       super.writeByte(155)
+      super.writeValue(value.toList())
+    } else if let value = value as? VideoPlayerEventMessage {
+      super.writeByte(156)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -1423,6 +1468,25 @@ protocol ProVideoPlayerHostApi {
   /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
   /// - [quality]: JPEG quality (0-100, default 80)
   func extractVideoFrame(source: VideoSourceMessage, positionMs: Int64, maxWidth: Int64?, maxHeight: Int64?, quality: Int64?, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
+  /// Extracts a content-based fingerprint for video deduplication.
+  ///
+  /// Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+  /// a hash. This allows distinguishing trimmed versions of the same video
+  /// that would have identical metadata.
+  ///
+  /// Returns a [ContentFingerprintMessage] containing:
+  /// - fingerprint: SHA-256 hash of content samples (hex string)
+  /// - fileSize: File size in bytes (for local files)
+  /// - error: Error message if extraction failed
+  ///
+  /// Platform implementations:
+  /// - Local files: Direct file reads with 8KB at start, middle, end
+  /// - Network URLs: HTTP Range requests (may not be supported by all servers)
+  /// - Assets: AssetManager reads
+  ///
+  /// The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+  /// for robust deduplication.
+  func extractContentFingerprint(source: VideoSourceMessage, completion: @escaping (Result<ContentFingerprintMessage, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -2757,6 +2821,41 @@ class ProVideoPlayerHostApiSetup {
       }
     } else {
       extractVideoFrameChannel.setMessageHandler(nil)
+    }
+    /// Extracts a content-based fingerprint for video deduplication.
+    ///
+    /// Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+    /// a hash. This allows distinguishing trimmed versions of the same video
+    /// that would have identical metadata.
+    ///
+    /// Returns a [ContentFingerprintMessage] containing:
+    /// - fingerprint: SHA-256 hash of content samples (hex string)
+    /// - fileSize: File size in bytes (for local files)
+    /// - error: Error message if extraction failed
+    ///
+    /// Platform implementations:
+    /// - Local files: Direct file reads with 8KB at start, middle, end
+    /// - Network URLs: HTTP Range requests (may not be supported by all servers)
+    /// - Assets: AssetManager reads
+    ///
+    /// The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+    /// for robust deduplication.
+    let extractContentFingerprintChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractContentFingerprint\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      extractContentFingerprintChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let sourceArg = args[0] as! VideoSourceMessage
+        api.extractContentFingerprint(source: sourceArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      extractContentFingerprintChannel.setMessageHandler(nil)
     }
   }
 }

@@ -1166,6 +1166,181 @@ class ProVideoPlayerPlugin: FlutterPlugin, ActivityAware, Application.ActivityLi
         }
     }
 
+    override fun extractContentFingerprint(
+        source: VideoSourceMessage,
+        callback: (Result<ContentFingerprintMessage>) -> Unit
+    ) {
+        verboseLog("extractContentFingerprint() called for source type: ${source.type}", TAG)
+        try {
+            val sampleSize = 8 * 1024 // 8KB per sample
+            val samples = ByteArray(sampleSize * 3) // 3 samples
+            var fileSize: Long? = null
+
+            when (source.type) {
+                VideoSourceType.FILE -> {
+                    val path = source.path
+                    if (path == null) {
+                        callback(Result.success(ContentFingerprintMessage(error = "File path is null")))
+                        return
+                    }
+                    val file = java.io.File(path)
+                    if (!file.exists()) {
+                        callback(Result.success(ContentFingerprintMessage(error = "File not found")))
+                        return
+                    }
+                    fileSize = file.length()
+                    java.io.RandomAccessFile(file, "r").use { raf ->
+                        readSamplesFromFile(raf, fileSize, sampleSize, samples)
+                    }
+                }
+                VideoSourceType.NETWORK -> {
+                    val url = source.url
+                    if (url == null) {
+                        callback(Result.success(ContentFingerprintMessage(error = "URL is null")))
+                        return
+                    }
+                    val headers = source.headers?.mapNotNull { (k, v) ->
+                        if (k != null && v != null) k to v else null
+                    }?.toMap() ?: emptyMap()
+                    val result = readSamplesFromNetwork(url, headers, sampleSize, samples)
+                    if (result.error != null) {
+                        callback(Result.success(ContentFingerprintMessage(error = result.error)))
+                        return
+                    }
+                    fileSize = result.fileSize
+                }
+                VideoSourceType.ASSET -> {
+                    val assetPath = source.assetPath
+                    if (assetPath == null) {
+                        callback(Result.success(ContentFingerprintMessage(error = "Asset path is null")))
+                        return
+                    }
+                    val flutterLoader = FlutterInjector.instance().flutterLoader()
+                    val resolvedPath = flutterLoader.getLookupKeyForAsset(assetPath)
+                    context.assets.openFd(resolvedPath).use { assetFd ->
+                        fileSize = assetFd.length
+                        java.io.RandomAccessFile(assetFd.fileDescriptor.toString(), "r").use { raf ->
+                            // For assets, we use the input stream approach
+                            readSamplesFromAsset(assetFd, sampleSize, samples)
+                        }
+                    }
+                }
+            }
+
+            // Compute SHA-256 hash
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hashBytes = digest.digest(samples)
+            val fingerprint = hashBytes.joinToString("") { "%02x".format(it) }
+
+            verboseLog("extractContentFingerprint() result: fingerprint=$fingerprint, fileSize=$fileSize", TAG)
+            callback(Result.success(ContentFingerprintMessage(fingerprint = fingerprint, fileSize = fileSize)))
+        } catch (e: Exception) {
+            verboseLog("extractContentFingerprint() failed: ${e.message}", TAG)
+            callback(Result.success(ContentFingerprintMessage(error = e.message ?: "Unknown error")))
+        }
+    }
+
+    private data class NetworkSampleResult(val fileSize: Long?, val error: String?)
+
+    private fun readSamplesFromFile(raf: java.io.RandomAccessFile, fileSize: Long, sampleSize: Int, samples: ByteArray) {
+        // Read from start
+        raf.seek(0)
+        raf.read(samples, 0, minOf(sampleSize, fileSize.toInt()))
+
+        // Read from middle
+        if (fileSize > sampleSize) {
+            val middlePos = (fileSize / 2) - (sampleSize / 2)
+            raf.seek(maxOf(0L, middlePos))
+            raf.read(samples, sampleSize, minOf(sampleSize, (fileSize - middlePos).toInt()))
+        }
+
+        // Read from end
+        if (fileSize > sampleSize * 2) {
+            val endPos = fileSize - sampleSize
+            raf.seek(maxOf(0L, endPos))
+            raf.read(samples, sampleSize * 2, minOf(sampleSize, (fileSize - endPos).toInt()))
+        }
+    }
+
+    private fun readSamplesFromAsset(assetFd: android.content.res.AssetFileDescriptor, sampleSize: Int, samples: ByteArray) {
+        val fileSize = assetFd.length
+        val stream = assetFd.createInputStream()
+        stream.use { input ->
+            // Read from start
+            input.read(samples, 0, minOf(sampleSize, fileSize.toInt()))
+
+            // For middle and end, we need to skip and read
+            if (fileSize > sampleSize) {
+                val middlePos = (fileSize / 2) - (sampleSize / 2)
+                input.skip(middlePos - sampleSize)
+                input.read(samples, sampleSize, minOf(sampleSize, (fileSize - middlePos).toInt()))
+            }
+
+            if (fileSize > sampleSize * 2) {
+                val endPos = fileSize - sampleSize
+                val skipAmount = endPos - (fileSize / 2) - (sampleSize / 2)
+                input.skip(maxOf(0L, skipAmount - sampleSize))
+                input.read(samples, sampleSize * 2, minOf(sampleSize, sampleSize))
+            }
+        }
+    }
+
+    private fun readSamplesFromNetwork(url: String, headers: Map<String, String>, sampleSize: Int, samples: ByteArray): NetworkSampleResult {
+        try {
+            // First, get the file size with a HEAD request
+            val headConnection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            headConnection.requestMethod = "HEAD"
+            headers.forEach { (k, v) -> headConnection.setRequestProperty(k, v) }
+            headConnection.connect()
+
+            val fileSize = headConnection.contentLengthLong
+            headConnection.disconnect()
+
+            if (fileSize <= 0) {
+                return NetworkSampleResult(null, "Cannot determine file size from network source")
+            }
+
+            // Read start sample
+            readNetworkRange(url, headers, 0, sampleSize, samples, 0)
+
+            // Read middle sample
+            if (fileSize > sampleSize) {
+                val middlePos = (fileSize / 2) - (sampleSize / 2)
+                readNetworkRange(url, headers, middlePos, sampleSize, samples, sampleSize)
+            }
+
+            // Read end sample
+            if (fileSize > sampleSize * 2) {
+                val endPos = fileSize - sampleSize
+                readNetworkRange(url, headers, endPos, sampleSize, samples, sampleSize * 2)
+            }
+
+            return NetworkSampleResult(fileSize, null)
+        } catch (e: Exception) {
+            return NetworkSampleResult(null, e.message ?: "Network error")
+        }
+    }
+
+    private fun readNetworkRange(url: String, headers: Map<String, String>, start: Long, length: Int, buffer: ByteArray, offset: Int) {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.requestMethod = "GET"
+        headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
+        connection.setRequestProperty("Range", "bytes=$start-${start + length - 1}")
+        connection.connect()
+
+        if (connection.responseCode == java.net.HttpURLConnection.HTTP_PARTIAL || connection.responseCode == java.net.HttpURLConnection.HTTP_OK) {
+            connection.inputStream.use { input ->
+                var totalRead = 0
+                while (totalRead < length) {
+                    val read = input.read(buffer, offset + totalRead, length - totalRead)
+                    if (read == -1) break
+                    totalRead += read
+                }
+            }
+        }
+        connection.disconnect()
+    }
+
     // MARK: - Casting Methods
 
     override fun isCastingSupported(callback: (Result<Boolean>) -> Unit) {

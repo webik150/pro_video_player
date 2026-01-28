@@ -564,11 +564,45 @@ class VideoPlayer(
                     }
 
                     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                        // Extract and send metadata (title) to match iOS behavior
+                        // Extract and send descriptive metadata
+                        val eventData = mutableMapOf<String, Any>("type" to "metadataChanged")
+
+                        // Title
                         val title = mediaMetadata.title?.toString()
                             ?: mediaMetadata.displayTitle?.toString()
                         if (title != null) {
-                            sendEvent(mapOf("type" to "metadataChanged", "title" to title))
+                            eventData["title"] = title
+                        }
+
+                        // Artist
+                        val artist = mediaMetadata.artist?.toString()
+                            ?: mediaMetadata.albumArtist?.toString()
+                        if (artist != null) {
+                            eventData["artist"] = artist
+                        }
+
+                        // Album
+                        val album = mediaMetadata.albumTitle?.toString()
+                        if (album != null) {
+                            eventData["album"] = album
+                        }
+
+                        // Year
+                        val year = mediaMetadata.releaseYear
+                            ?: mediaMetadata.recordingYear
+                        if (year != null) {
+                            eventData["year"] = year
+                        }
+
+                        // Genre
+                        val genre = mediaMetadata.genre?.toString()
+                        if (genre != null) {
+                            eventData["genre"] = genre
+                        }
+
+                        // Only send if we have at least one metadata field
+                        if (eventData.size > 1) {
+                            sendEvent(eventData)
                         }
                     }
 
@@ -610,16 +644,18 @@ class VideoPlayer(
                 // Position updates will start on first play() call
             }
 
-        // Set up MediaSession and register for background playback if enabled
-        // MediaSession is only needed when background playback is enabled
+        // Set up MediaSession for Bluetooth/external controls (always needed)
+        // This enables Bluetooth headphones, Android Auto, and lock screen controls
+        exoPlayer?.let { player ->
+            mediaSession = MediaSession.Builder(context, player)
+                .setId("pro_video_player_$playerId")
+                .build()
+        }
+
+        // Register with background playback service only if enabled
+        // This handles the foreground notification and keeps the app alive
         if (allowBackgroundPlayback) {
             exoPlayer?.let { player ->
-                // Create MediaSession for Bluetooth/external controls
-                mediaSession = MediaSession.Builder(context, player)
-                    .setId("pro_video_player_$playerId")
-                    .build()
-
-                // Register player with background playback service
                 MediaPlaybackService.registerPlayer(playerId, player)
             }
         }
@@ -1993,6 +2029,8 @@ class VideoPlayer(
         var width: Int? = null
         var height: Int? = null
         var containerFormat: String? = null
+        var audioSampleRate: Int? = null
+        var audioChannels: Int? = null
 
         for (group in tracks.groups) {
             when (group.type) {
@@ -2025,6 +2063,12 @@ class VideoPlayer(
 
                         // Extract audio bitrate
                         if (format.bitrate > 0) audioBitrate = format.bitrate
+
+                        // Extract audio sample rate
+                        if (format.sampleRate > 0) audioSampleRate = format.sampleRate
+
+                        // Extract audio channels
+                        if (format.channelCount > 0) audioChannels = format.channelCount
                     }
                 }
             }
@@ -2045,9 +2089,22 @@ class VideoPlayer(
         // Add frame rate if available
         frameRate?.let { metadata["frameRate"] = it.toDouble() }
 
+        // Add audio sample rate and channels if available
+        audioSampleRate?.let { metadata["audioSampleRate"] = it }
+        audioChannels?.let { metadata["audioChannels"] = it }
+
         // Infer container format from URI extension
-        containerFormat = getContainerFormat(player.currentMediaItem?.localConfiguration?.uri?.toString())
+        val uri = player.currentMediaItem?.localConfiguration?.uri
+        containerFormat = getContainerFormat(uri?.toString())
         containerFormat?.let { metadata["containerFormat"] = it }
+
+        // Get file size for local files
+        uri?.let { fileUri ->
+            val fileSize = getFileSize(fileUri)
+            if (fileSize != null && fileSize > 0) {
+                metadata["fileSize"] = fileSize
+            }
+        }
 
         return if (metadata.isEmpty()) null else metadata
     }
@@ -2066,6 +2123,30 @@ class VideoPlayer(
      */
     private fun getContainerFormat(uriString: String?): String? {
         return VideoFormatUtils.getContainerFormat(uriString)
+    }
+
+    /**
+     * Gets the file size for a URI.
+     * Supports file:// URIs directly and content:// URIs via ContentResolver.
+     */
+    private fun getFileSize(uri: android.net.Uri): Long? {
+        return try {
+            when (uri.scheme) {
+                "file" -> {
+                    val path = uri.path ?: return null
+                    java.io.File(path).length()
+                }
+                "content" -> {
+                    context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                        pfd.statSize
+                    }
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            ProVideoPlayerPlugin.verboseLog("Failed to get file size: ${e.message}", "VideoPlayer")
+            null
+        }
     }
 
     /**

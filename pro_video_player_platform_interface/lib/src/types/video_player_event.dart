@@ -336,15 +336,33 @@ final class VolumeChangedEvent extends VideoPlayerEvent {
 }
 
 /// Emitted when video metadata changes.
+///
+/// This event contains descriptive metadata extracted from the video container,
+/// such as title, artist, album, year, and genre. Not all fields will be
+/// available for all videos - they depend on what metadata is embedded in the
+/// video file.
 final class MetadataChangedEvent extends VideoPlayerEvent {
   /// Creates a metadata changed event.
-  const MetadataChangedEvent({this.title});
+  const MetadataChangedEvent({this.title, this.artist, this.album, this.year, this.genre});
 
   /// The title of the video, if available.
   final String? title;
 
+  /// The artist or creator of the video.
+  final String? artist;
+
+  /// The album or collection name.
+  final String? album;
+
+  /// The release year of the video.
+  final int? year;
+
+  /// The genre of the video content.
+  final String? genre;
+
   @override
-  String toString() => 'MetadataChangedEvent(title: $title)';
+  String toString() =>
+      'MetadataChangedEvent(title: $title, artist: $artist, album: $album, year: $year, genre: $genre)';
 }
 
 /// Emitted when technical video metadata is extracted from the loaded video.

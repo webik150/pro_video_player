@@ -481,6 +481,22 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
     return _hostApi.extractVideoFrame(sourceMessage, position.inMilliseconds, maxWidth, maxHeight, quality);
   }
 
+  @override
+  Future<ContentFingerprint> extractContentFingerprint(VideoSource source) async {
+    final sourceMessage = _convertVideoSource(source);
+    final result = await _hostApi.extractContentFingerprint(sourceMessage);
+
+    if (result.error != null) {
+      throw ContentFingerprintException('EXTRACTION_FAILED', result.error!);
+    }
+
+    if (result.fingerprint == null) {
+      throw const ContentFingerprintException('EXTRACTION_FAILED', 'No fingerprint returned');
+    }
+
+    return ContentFingerprint(fingerprint: result.fingerprint!, fileSize: result.fileSize);
+  }
+
   // ==================== Casting ====================
 
   @override

@@ -129,6 +129,7 @@ Core Principles:
 - Single responsibility - Each class/function does one thing well
 - Share code - Avoid duplication across packages/platforms (iOS/macOS share Swift, MethodChannelBase pattern)
 - Dart-first - Implement in Dart when possible without 3rd party deps; only use native for platform APIs
+- **Metadata extraction** - Prefer Flutter/Dart-based approaches (temporary player pattern: create player, wait for metadata event, dispose) over native-only implementations. Native APIs like MediaMetadataRetriever or AVAsset should only be used for capabilities unavailable through Flutter (e.g., embedded artwork extraction, video frame extraction).
 - Design for testing - Dependency injection, interfaces, mockable components
 - Library independence - Library packages MUST be completely self-sufficient and NEVER reference example app code, classes, resources, or package names under ANY circumstance. Library must work standalone without example apps present.
 

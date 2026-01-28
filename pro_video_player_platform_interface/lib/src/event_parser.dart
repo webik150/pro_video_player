@@ -68,7 +68,13 @@ class EventParser {
       'backgroundPlaybackChanged' => BackgroundPlaybackChangedEvent(isEnabled: event['isEnabled'] as bool),
       'playbackSpeedChanged' => PlaybackSpeedChangedEvent(event['speed'] as double),
       'volumeChanged' => VolumeChangedEvent(event['volume'] as double),
-      'metadataChanged' => MetadataChangedEvent(title: event['title'] as String?),
+      'metadataChanged' => MetadataChangedEvent(
+        title: event['title'] as String?,
+        artist: event['artist'] as String?,
+        album: event['album'] as String?,
+        year: event['year'] as int?,
+        genre: event['genre'] as String?,
+      ),
       'bufferingStarted' => BufferingStartedEvent(reason: _parseBufferingReason(event['reason'] as String?)),
       'bufferingEnded' => const BufferingEndedEvent(),
       'networkError' => NetworkErrorEvent(

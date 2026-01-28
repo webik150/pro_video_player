@@ -271,6 +271,34 @@ class ProVideoPlayerController extends ProVideoPlayerControllerBase
     quality: quality,
   );
 
+  /// Extracts a content-based fingerprint for video deduplication.
+  ///
+  /// This method reads 8KB samples from 3 positions in the video file
+  /// (beginning, middle, and end) and computes a SHA-256 hash of the combined
+  /// samples. This fingerprint can distinguish trimmed or edited versions of
+  /// the same video that would have identical metadata.
+  ///
+  /// Returns a [ContentFingerprint] containing:
+  /// - [ContentFingerprint.fingerprint]: The SHA-256 hash as a hex string
+  /// - [ContentFingerprint.fileSize]: The file size in bytes
+  ///
+  /// For comprehensive deduplication, combine this with [VideoMetadata.metadataFingerprint]:
+  /// ```dart
+  /// final metadata = await ProVideoPlayerController.extractMetadata(source);
+  /// final content = await ProVideoPlayerController.extractContentFingerprint(source);
+  /// final combined = '${metadata.metadataFingerprint}-${content.fingerprint}';
+  /// ```
+  ///
+  /// Platform implementations:
+  /// - **Local files**: Direct file reads with 8KB at start, middle, and end
+  /// - **Network URLs**: HTTP Range requests (may not be supported by all servers)
+  /// - **Assets**: AssetManager reads
+  ///
+  /// Throws [ContentFingerprintException] if extraction fails (e.g., file not found,
+  /// network error, or server doesn't support Range requests).
+  static Future<ContentFingerprint> extractContentFingerprint(VideoSource source) =>
+      ProVideoPlayerPlatform.instance.extractContentFingerprint(source);
+
   // ==================== Base Class Overrides ====================
 
   @override

@@ -655,29 +655,51 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
       // Create a temporary player with minimal options
       playerId = await create(source: source);
 
-      // Wait for metadata extraction event or timeout
-      final completer = Completer<VideoMetadata>();
+      // Wait for metadata extraction events or timeout
+      final technicalCompleter = Completer<VideoMetadata>();
+
+      // Collect additional metadata from various events
+      String? title;
+      String? artist;
+      String? album;
+      int? year;
+      String? genre;
+      List<SubtitleTrack>? subtitleTracks;
+      int? audioTrackCount;
 
       subscription = events(playerId).listen((event) {
         if (event is VideoMetadataExtractedEvent) {
-          if (!completer.isCompleted) {
-            completer.complete(event.metadata);
+          if (!technicalCompleter.isCompleted) {
+            technicalCompleter.complete(event.metadata);
           }
+        } else if (event is MetadataChangedEvent) {
+          // Capture descriptive metadata
+          title ??= event.title;
+          artist ??= event.artist;
+          album ??= event.album;
+          year ??= event.year;
+          genre ??= event.genre;
+        } else if (event is SubtitleTracksChangedEvent) {
+          // Capture subtitle tracks
+          subtitleTracks ??= event.tracks;
+        } else if (event is AudioTracksChangedEvent) {
+          // Capture audio track count
+          audioTrackCount ??= event.tracks.length;
         } else if (event is ErrorEvent) {
-          if (!completer.isCompleted) {
-            completer.completeError(MetadataExtractionException(event.code ?? 'ERROR', event.message));
+          if (!technicalCompleter.isCompleted) {
+            technicalCompleter.completeError(MetadataExtractionException(event.code ?? 'ERROR', event.message));
           }
         }
       });
 
       // Also try to fetch metadata directly (in case event was already sent)
       final existingMetadata = await getVideoMetadata(playerId);
-      if (existingMetadata != null && existingMetadata.isNotEmpty && !completer.isCompleted) {
-        completer.complete(existingMetadata);
+      if (existingMetadata != null && existingMetadata.isNotEmpty && !technicalCompleter.isCompleted) {
+        technicalCompleter.complete(existingMetadata);
       }
 
-      // Wait with timeout
-      final metadata = await completer.future.timeout(
+      // Wait for technical metadata with timeout
+      final technicalMetadata = await technicalCompleter.future.timeout(
         timeout,
         onTimeout: () => throw MetadataExtractionException(
           'TIMEOUT',
@@ -685,7 +707,20 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
         ),
       );
 
-      return metadata;
+      // Wait briefly for additional events (descriptive metadata, tracks) to arrive
+      // These events may come slightly after technical metadata
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // Combine all metadata
+      return technicalMetadata.copyWith(
+        title: title,
+        artist: artist,
+        album: album,
+        year: year,
+        genre: genre,
+        subtitleTracks: subtitleTracks,
+        audioTrackCount: audioTrackCount,
+      );
     } on MetadataExtractionException {
       rethrow;
     } catch (e) {
@@ -818,6 +853,35 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
 
     // Fall back to frame extraction
     return extractVideoFrame(source, position: position, maxWidth: maxWidth, maxHeight: maxHeight, quality: quality);
+  }
+
+  /// Extracts a content-based fingerprint for video deduplication.
+  ///
+  /// This method reads 8KB samples from 3 positions in the video file
+  /// (beginning, middle, and end) and computes a SHA-256 hash of the combined
+  /// samples. This fingerprint can distinguish trimmed or edited versions of
+  /// the same video that would have identical metadata.
+  ///
+  /// Returns a [ContentFingerprint] containing:
+  /// - [ContentFingerprint.fingerprint]: The SHA-256 hash as a hex string
+  /// - [ContentFingerprint.fileSize]: The file size in bytes
+  ///
+  /// For comprehensive deduplication, combine this with [VideoMetadata.metadataFingerprint]:
+  /// ```dart
+  /// final metadata = await extractMetadata(source);
+  /// final content = await extractContentFingerprint(source);
+  /// final combined = '${metadata.metadataFingerprint}-${content.fingerprint}';
+  /// ```
+  ///
+  /// Platform implementations:
+  /// - **Local files**: Direct file reads with 8KB at start, middle, and end
+  /// - **Network URLs**: HTTP Range requests (may not be supported by all servers)
+  /// - **Assets**: AssetManager reads
+  ///
+  /// Throws [ContentFingerprintException] if extraction fails (e.g., file not found,
+  /// network error, or server doesn't support Range requests).
+  Future<ContentFingerprint> extractContentFingerprint(VideoSource source) {
+    throw UnimplementedError('extractContentFingerprint() has not been implemented.');
   }
 
   // ==================== Casting ====================

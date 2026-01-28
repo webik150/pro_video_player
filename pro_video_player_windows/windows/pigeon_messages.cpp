@@ -1333,6 +1333,83 @@ VideoMetadataMessage VideoMetadataMessage::FromEncodableList(const EncodableList
   return decoded;
 }
 
+// ContentFingerprintMessage
+
+ContentFingerprintMessage::ContentFingerprintMessage() {}
+
+ContentFingerprintMessage::ContentFingerprintMessage(
+  const std::string* fingerprint,
+  const int64_t* file_size,
+  const std::string* error)
+ : fingerprint_(fingerprint ? std::optional<std::string>(*fingerprint) : std::nullopt),
+    file_size_(file_size ? std::optional<int64_t>(*file_size) : std::nullopt),
+    error_(error ? std::optional<std::string>(*error) : std::nullopt) {}
+
+const std::string* ContentFingerprintMessage::fingerprint() const {
+  return fingerprint_ ? &(*fingerprint_) : nullptr;
+}
+
+void ContentFingerprintMessage::set_fingerprint(const std::string_view* value_arg) {
+  fingerprint_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void ContentFingerprintMessage::set_fingerprint(std::string_view value_arg) {
+  fingerprint_ = value_arg;
+}
+
+
+const int64_t* ContentFingerprintMessage::file_size() const {
+  return file_size_ ? &(*file_size_) : nullptr;
+}
+
+void ContentFingerprintMessage::set_file_size(const int64_t* value_arg) {
+  file_size_ = value_arg ? std::optional<int64_t>(*value_arg) : std::nullopt;
+}
+
+void ContentFingerprintMessage::set_file_size(int64_t value_arg) {
+  file_size_ = value_arg;
+}
+
+
+const std::string* ContentFingerprintMessage::error() const {
+  return error_ ? &(*error_) : nullptr;
+}
+
+void ContentFingerprintMessage::set_error(const std::string_view* value_arg) {
+  error_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void ContentFingerprintMessage::set_error(std::string_view value_arg) {
+  error_ = value_arg;
+}
+
+
+EncodableList ContentFingerprintMessage::ToEncodableList() const {
+  EncodableList list;
+  list.reserve(3);
+  list.push_back(fingerprint_ ? EncodableValue(*fingerprint_) : EncodableValue());
+  list.push_back(file_size_ ? EncodableValue(*file_size_) : EncodableValue());
+  list.push_back(error_ ? EncodableValue(*error_) : EncodableValue());
+  return list;
+}
+
+ContentFingerprintMessage ContentFingerprintMessage::FromEncodableList(const EncodableList& list) {
+  ContentFingerprintMessage decoded;
+  auto& encodable_fingerprint = list[0];
+  if (!encodable_fingerprint.IsNull()) {
+    decoded.set_fingerprint(std::get<std::string>(encodable_fingerprint));
+  }
+  auto& encodable_file_size = list[1];
+  if (!encodable_file_size.IsNull()) {
+    decoded.set_file_size(std::get<int64_t>(encodable_file_size));
+  }
+  auto& encodable_error = list[2];
+  if (!encodable_error.IsNull()) {
+    decoded.set_error(std::get<std::string>(encodable_error));
+  }
+  return decoded;
+}
+
 // MediaMetadataMessage
 
 MediaMetadataMessage::MediaMetadataMessage() {}
@@ -2211,21 +2288,24 @@ EncodableValue PigeonInternalCodecSerializer::ReadValueOfType(
         return CustomEncodableValue(VideoMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 150: {
-        return CustomEncodableValue(MediaMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(ContentFingerprintMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 151: {
-        return CustomEncodableValue(SubtitleSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(MediaMetadataMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 152: {
-        return CustomEncodableValue(ExternalSubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(SubtitleSourceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 153: {
-        return CustomEncodableValue(CodecInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(ExternalSubtitleTrackMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 154: {
-        return CustomEncodableValue(CodecCompatibilityMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+        return CustomEncodableValue(CodecInfoMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 155: {
+        return CustomEncodableValue(CodecCompatibilityMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 156: {
         return CustomEncodableValue(VideoPlayerEventMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     default:
@@ -2342,33 +2422,38 @@ void PigeonInternalCodecSerializer::WriteValue(
       WriteValue(EncodableValue(std::any_cast<VideoMetadataMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
-    if (custom_value->type() == typeid(MediaMetadataMessage)) {
+    if (custom_value->type() == typeid(ContentFingerprintMessage)) {
       stream->WriteByte(150);
+      WriteValue(EncodableValue(std::any_cast<ContentFingerprintMessage>(*custom_value).ToEncodableList()), stream);
+      return;
+    }
+    if (custom_value->type() == typeid(MediaMetadataMessage)) {
+      stream->WriteByte(151);
       WriteValue(EncodableValue(std::any_cast<MediaMetadataMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(SubtitleSourceMessage)) {
-      stream->WriteByte(151);
+      stream->WriteByte(152);
       WriteValue(EncodableValue(std::any_cast<SubtitleSourceMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(ExternalSubtitleTrackMessage)) {
-      stream->WriteByte(152);
+      stream->WriteByte(153);
       WriteValue(EncodableValue(std::any_cast<ExternalSubtitleTrackMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(CodecInfoMessage)) {
-      stream->WriteByte(153);
+      stream->WriteByte(154);
       WriteValue(EncodableValue(std::any_cast<CodecInfoMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(CodecCompatibilityMessage)) {
-      stream->WriteByte(154);
+      stream->WriteByte(155);
       WriteValue(EncodableValue(std::any_cast<CodecCompatibilityMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
     if (custom_value->type() == typeid(VideoPlayerEventMessage)) {
-      stream->WriteByte(155);
+      stream->WriteByte(156);
       WriteValue(EncodableValue(std::any_cast<VideoPlayerEventMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
@@ -4435,6 +4520,35 @@ void ProVideoPlayerHostApi::SetUp(
             } else {
               wrapped.push_back(EncodableValue());
             }
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractContentFingerprint" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_source_arg = args.at(0);
+          if (encodable_source_arg.IsNull()) {
+            reply(WrapError("source_arg unexpectedly null."));
+            return;
+          }
+          const auto& source_arg = std::any_cast<const VideoSourceMessage&>(std::get<CustomEncodableValue>(encodable_source_arg));
+          api->ExtractContentFingerprint(source_arg, [reply](ErrorOr<ContentFingerprintMessage>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            wrapped.push_back(CustomEncodableValue(std::move(output).TakeValue()));
             reply(EncodableValue(std::move(wrapped)));
           });
         } catch (const std::exception& exception) {

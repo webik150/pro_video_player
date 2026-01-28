@@ -1,5 +1,6 @@
 import AVFoundation
 import AVKit
+import CommonCrypto
 import Foundation
 
 #if os(iOS)
@@ -1011,6 +1012,250 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
             let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
             return bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
         #endif
+    }
+
+    func extractContentFingerprint(
+        source: VideoSourceMessage,
+        completion: @escaping (Result<ContentFingerprintMessage, Error>) -> Void
+    ) {
+        verboseLog("extractContentFingerprint() called for source type: \(source.type)", tag: "Plugin")
+
+        let sampleSize = 8 * 1024 // 8KB per sample
+
+        // Build URL from source
+        let url: URL?
+        switch source.type {
+        case .network:
+            if let urlString = source.url {
+                url = URL(string: urlString)
+            } else {
+                url = nil
+            }
+        case .file:
+            if let path = source.path {
+                url = URL(fileURLWithPath: path)
+            } else {
+                url = nil
+            }
+        case .asset:
+            if let assetPath = source.assetPath {
+                #if os(iOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #elseif os(macOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #endif
+            } else {
+                url = nil
+            }
+        }
+
+        guard let sourceUrl = url else {
+            completion(.success(ContentFingerprintMessage(error: "Could not create URL from source")))
+            return
+        }
+
+        // Handle local files directly
+        if sourceUrl.isFileURL {
+            extractLocalFileFingerprint(url: sourceUrl, sampleSize: sampleSize, completion: completion)
+        } else {
+            extractNetworkFileFingerprint(
+                url: sourceUrl, headers: source.headers, sampleSize: sampleSize, completion: completion
+            )
+        }
+    }
+
+    private func extractLocalFileFingerprint(
+        url: URL, sampleSize: Int, completion: @escaping (Result<ContentFingerprintMessage, Error>) -> Void
+    ) {
+        do {
+            let fileHandle = try FileHandle(forReadingFrom: url)
+            defer { try? fileHandle.close() }
+
+            let fileSize = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
+
+            var samples = Data()
+
+            // Read from start
+            try fileHandle.seek(toOffset: 0)
+            let startSample = fileHandle.readData(ofLength: min(sampleSize, Int(fileSize)))
+            samples.append(startSample)
+
+            // Read from middle
+            if fileSize > sampleSize {
+                let middlePos = (fileSize / 2) - Int64(sampleSize / 2)
+                try fileHandle.seek(toOffset: UInt64(max(0, middlePos)))
+                let middleSample = fileHandle.readData(ofLength: min(sampleSize, Int(fileSize - middlePos)))
+                samples.append(middleSample)
+            }
+
+            // Read from end
+            if fileSize > sampleSize * 2 {
+                let endPos = fileSize - Int64(sampleSize)
+                try fileHandle.seek(toOffset: UInt64(max(0, endPos)))
+                let endSample = fileHandle.readData(ofLength: sampleSize)
+                samples.append(endSample)
+            }
+
+            // Compute SHA-256 hash
+            let fingerprint = sha256Hex(data: samples)
+
+            verboseLog(
+                "extractContentFingerprint() result: fingerprint=\(fingerprint), fileSize=\(fileSize)", tag: "Plugin"
+            )
+            completion(.success(ContentFingerprintMessage(fingerprint: fingerprint, fileSize: fileSize)))
+        } catch {
+            verboseLog("extractContentFingerprint() failed: \(error)", tag: "Plugin")
+            completion(.success(ContentFingerprintMessage(error: error.localizedDescription)))
+        }
+    }
+
+    private func extractNetworkFileFingerprint(
+        url: URL, headers: [String?: String?]?, sampleSize: Int,
+        completion: @escaping (Result<ContentFingerprintMessage, Error>) -> Void
+    ) {
+        // First, get file size with HEAD request
+        var headRequest = URLRequest(url: url)
+        headRequest.httpMethod = "HEAD"
+        if let headers = headers {
+            for (key, value) in headers {
+                if let k = key, let v = value {
+                    headRequest.setValue(v, forHTTPHeaderField: k)
+                }
+            }
+        }
+
+        URLSession.shared.dataTask(with: headRequest) { [weak self] _, response, error in
+            guard let self = self else { return }
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.success(ContentFingerprintMessage(error: error.localizedDescription)))
+                }
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                let contentLength = httpResponse.allHeaderFields["Content-Length"] as? String,
+                let fileSize = Int64(contentLength)
+            else {
+                DispatchQueue.main.async {
+                    completion(.success(ContentFingerprintMessage(error: "Cannot determine file size from network source")))
+                }
+                return
+            }
+
+            // Now read samples using Range requests
+            self.readNetworkSamples(
+                url: url, headers: headers, fileSize: fileSize, sampleSize: sampleSize, completion: completion
+            )
+        }.resume()
+    }
+
+    private func readNetworkSamples(
+        url: URL, headers: [String?: String?]?, fileSize: Int64, sampleSize: Int,
+        completion: @escaping (Result<ContentFingerprintMessage, Error>) -> Void
+    ) {
+        let group = DispatchGroup()
+        var samples = [Int: Data]()  // Position -> Data
+        var error: String?
+
+        // Helper to create a range request
+        func createRangeRequest(start: Int64, length: Int) -> URLRequest {
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            if let headers = headers {
+                for (key, value) in headers {
+                    if let k = key, let v = value {
+                        request.setValue(v, forHTTPHeaderField: k)
+                    }
+                }
+            }
+            request.setValue("bytes=\(start)-\(start + Int64(length) - 1)", forHTTPHeaderField: "Range")
+            return request
+        }
+
+        // Read start sample
+        group.enter()
+        let startRequest = createRangeRequest(start: 0, length: sampleSize)
+        URLSession.shared.dataTask(with: startRequest) { data, _, err in
+            if let err = err {
+                error = err.localizedDescription
+            } else if let data = data {
+                samples[0] = data
+            }
+            group.leave()
+        }.resume()
+
+        // Read middle sample
+        if fileSize > sampleSize {
+            group.enter()
+            let middlePos = (fileSize / 2) - Int64(sampleSize / 2)
+            let middleRequest = createRangeRequest(start: middlePos, length: sampleSize)
+            URLSession.shared.dataTask(with: middleRequest) { data, _, err in
+                if let err = err {
+                    error = err.localizedDescription
+                } else if let data = data {
+                    samples[1] = data
+                }
+                group.leave()
+            }.resume()
+        }
+
+        // Read end sample
+        if fileSize > sampleSize * 2 {
+            group.enter()
+            let endPos = fileSize - Int64(sampleSize)
+            let endRequest = createRangeRequest(start: endPos, length: sampleSize)
+            URLSession.shared.dataTask(with: endRequest) { data, _, err in
+                if let err = err {
+                    error = err.localizedDescription
+                } else if let data = data {
+                    samples[2] = data
+                }
+                group.leave()
+            }.resume()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            if let error = error {
+                completion(.success(ContentFingerprintMessage(error: error)))
+                return
+            }
+
+            // Combine samples in order
+            var combinedData = Data()
+            for i in 0..<3 {
+                if let data = samples[i] {
+                    combinedData.append(data)
+                }
+            }
+
+            // Compute SHA-256 hash
+            let fingerprint = self?.sha256Hex(data: combinedData) ?? ""
+
+            verboseLog("extractContentFingerprint() result: fingerprint=\(fingerprint), fileSize=\(fileSize)", tag: "Plugin")
+            completion(.success(ContentFingerprintMessage(fingerprint: fingerprint, fileSize: fileSize)))
+        }
+    }
+
+    private func sha256Hex(data: Data) -> String {
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes { bytes in
+            _ = CC_SHA256(bytes.baseAddress, CC_LONG(data.count), &hash)
+        }
+        return hash.map { String(format: "%02x", $0) }.joined()
     }
 
     func getVideoQualities(playerId: Int64, completion: @escaping (Result<[VideoQualityTrackMessage?], Error>) -> Void) {

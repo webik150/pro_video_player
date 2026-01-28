@@ -83,23 +83,26 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is VideoMetadataMessage) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    } else if (value is MediaMetadataMessage) {
+    } else if (value is ContentFingerprintMessage) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleSourceMessage) {
+    } else if (value is MediaMetadataMessage) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    } else if (value is ExternalSubtitleTrackMessage) {
+    } else if (value is SubtitleSourceMessage) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    } else if (value is CodecInfoMessage) {
+    } else if (value is ExternalSubtitleTrackMessage) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    } else if (value is CodecCompatibilityMessage) {
+    } else if (value is CodecInfoMessage) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    } else if (value is VideoPlayerEventMessage) {
+    } else if (value is CodecCompatibilityMessage) {
       buffer.putUint8(155);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoPlayerEventMessage) {
+      buffer.putUint8(156);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -162,16 +165,18 @@ class _PigeonCodec extends StandardMessageCodec {
       case 149:
         return VideoMetadataMessage.decode(readValue(buffer)!);
       case 150:
-        return MediaMetadataMessage.decode(readValue(buffer)!);
+        return ContentFingerprintMessage.decode(readValue(buffer)!);
       case 151:
-        return SubtitleSourceMessage.decode(readValue(buffer)!);
+        return MediaMetadataMessage.decode(readValue(buffer)!);
       case 152:
-        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
+        return SubtitleSourceMessage.decode(readValue(buffer)!);
       case 153:
-        return CodecInfoMessage.decode(readValue(buffer)!);
+        return ExternalSubtitleTrackMessage.decode(readValue(buffer)!);
       case 154:
-        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+        return CodecInfoMessage.decode(readValue(buffer)!);
       case 155:
+        return CodecCompatibilityMessage.decode(readValue(buffer)!);
+      case 156:
         return VideoPlayerEventMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);

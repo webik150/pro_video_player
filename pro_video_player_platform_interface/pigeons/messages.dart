@@ -444,6 +444,27 @@ class VideoMetadataMessage {
   });
 }
 
+/// Content fingerprint result message.
+///
+/// Contains a hash computed from multi-position content samples,
+/// useful for video deduplication that can distinguish edited versions.
+class ContentFingerprintMessage {
+  /// Hash of content samples (hex string).
+  ///
+  /// Computed from 8KB samples at beginning, middle, and end of the file.
+  final String? fingerprint;
+
+  /// File size in bytes.
+  ///
+  /// Included for combining with metadata fingerprint.
+  final int? fileSize;
+
+  /// Error message if fingerprint extraction failed.
+  final String? error;
+
+  ContentFingerprintMessage({this.fingerprint, this.fileSize, this.error});
+}
+
 /// Media metadata for platform controls.
 class MediaMetadataMessage {
   /// Media title.
@@ -947,6 +968,27 @@ abstract class ProVideoPlayerHostApi {
   /// - [quality]: JPEG quality (0-100, default 80)
   @async
   Uint8List? extractVideoFrame(VideoSourceMessage source, int positionMs, int? maxWidth, int? maxHeight, int? quality);
+
+  /// Extracts a content-based fingerprint for video deduplication.
+  ///
+  /// Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+  /// a hash. This allows distinguishing trimmed versions of the same video
+  /// that would have identical metadata.
+  ///
+  /// Returns a [ContentFingerprintMessage] containing:
+  /// - fingerprint: SHA-256 hash of content samples (hex string)
+  /// - fileSize: File size in bytes (for local files)
+  /// - error: Error message if extraction failed
+  ///
+  /// Platform implementations:
+  /// - Local files: Direct file reads with 8KB at start, middle, end
+  /// - Network URLs: HTTP Range requests (may not be supported by all servers)
+  /// - Assets: AssetManager reads
+  ///
+  /// The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+  /// for robust deduplication.
+  @async
+  ContentFingerprintMessage extractContentFingerprint(VideoSourceMessage source);
 }
 
 /// Playback state enumeration.

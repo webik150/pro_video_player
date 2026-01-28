@@ -17,6 +17,8 @@ class _VideoMetadataScreenState extends State<VideoMetadataScreen> {
   late ProVideoPlayerController _controller;
   bool _isInitialized = false;
   String? _error;
+  String? _fingerprintResult;
+  bool _isExtractingFingerprint = false;
 
   @override
   void initState() {
@@ -42,6 +44,38 @@ class _VideoMetadataScreenState extends State<VideoMetadataScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _extractFingerprint() async {
+    setState(() {
+      _isExtractingFingerprint = true;
+      _fingerprintResult = null;
+    });
+
+    try {
+      const source = VideoSource.network(VideoUrls.bitmovinSintelHls);
+      final stopwatch = Stopwatch()..start();
+      final fingerprint = await ProVideoPlayerController.extractContentFingerprint(source);
+      stopwatch.stop();
+
+      setState(() {
+        _fingerprintResult =
+            'Fingerprint: ${fingerprint.fingerprint.substring(0, 16)}...\n'
+            'File size: ${fingerprint.fileSize != null ? "${(fingerprint.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB" : "Unknown"}\n'
+            'Time: ${stopwatch.elapsedMilliseconds}ms';
+        _isExtractingFingerprint = false;
+      });
+    } on ContentFingerprintException catch (e) {
+      setState(() {
+        _fingerprintResult = 'Error: ${e.code} - ${e.message}';
+        _isExtractingFingerprint = false;
+      });
+    } catch (e) {
+      setState(() {
+        _fingerprintResult = 'Error: $e';
+        _isExtractingFingerprint = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _controller.removeListener(_onUpdate);
@@ -62,7 +96,10 @@ class _VideoMetadataScreenState extends State<VideoMetadataScreen> {
   Widget _buildContent() => ResponsiveVideoLayout(
     videoPlayer: ProVideoPlayer(key: TestKeys.videoMetadataVideoPlayer, controller: _controller),
     controls: SingleChildScrollView(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildMetadataSection()]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [_buildMetadataSection(), _buildFingerprintSection()],
+      ),
     ),
     maxVideoHeightFraction: 0.35,
   );
@@ -92,6 +129,42 @@ class _VideoMetadataScreenState extends State<VideoMetadataScreen> {
       ],
     );
   }
+
+  Widget _buildFingerprintSection() => Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        const SizedBox(height: 8),
+        Text('Content Fingerprint Benchmark', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        const Text(
+          'Extracts 8KB samples from 3 positions (start, middle, end) and computes SHA-256 hash.',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: _isExtractingFingerprint ? null : _extractFingerprint,
+          icon: _isExtractingFingerprint
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.fingerprint),
+          label: Text(_isExtractingFingerprint ? 'Extracting...' : 'Extract Fingerprint'),
+        ),
+        if (_fingerprintResult != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(_fingerprintResult!, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _MetadataRow extends StatelessWidget {

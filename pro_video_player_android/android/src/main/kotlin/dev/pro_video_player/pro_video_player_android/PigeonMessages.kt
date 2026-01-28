@@ -711,6 +711,48 @@ data class VideoMetadataMessage (
 }
 
 /**
+ * Content fingerprint result message.
+ *
+ * Contains a hash computed from multi-position content samples,
+ * useful for video deduplication that can distinguish edited versions.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class ContentFingerprintMessage (
+  /**
+   * Hash of content samples (hex string).
+   *
+   * Computed from 8KB samples at beginning, middle, and end of the file.
+   */
+  val fingerprint: String? = null,
+  /**
+   * File size in bytes.
+   *
+   * Included for combining with metadata fingerprint.
+   */
+  val fileSize: Long? = null,
+  /** Error message if fingerprint extraction failed. */
+  val error: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ContentFingerprintMessage {
+      val fingerprint = pigeonVar_list[0] as String?
+      val fileSize = pigeonVar_list[1] as Long?
+      val error = pigeonVar_list[2] as String?
+      return ContentFingerprintMessage(fingerprint, fileSize, error)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      fingerprint,
+      fileSize,
+      error,
+    )
+  }
+}
+
+/**
  * Media metadata for platform controls.
  *
  * Generated class from Pigeon that represents data sent in messages.
@@ -1084,30 +1126,35 @@ private open class PigeonMessagesPigeonCodec : StandardMessageCodec() {
       }
       150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MediaMetadataMessage.fromList(it)
+          ContentFingerprintMessage.fromList(it)
         }
       }
       151.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SubtitleSourceMessage.fromList(it)
+          MediaMetadataMessage.fromList(it)
         }
       }
       152.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ExternalSubtitleTrackMessage.fromList(it)
+          SubtitleSourceMessage.fromList(it)
         }
       }
       153.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CodecInfoMessage.fromList(it)
+          ExternalSubtitleTrackMessage.fromList(it)
         }
       }
       154.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CodecCompatibilityMessage.fromList(it)
+          CodecInfoMessage.fromList(it)
         }
       }
       155.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CodecCompatibilityMessage.fromList(it)
+        }
+      }
+      156.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           VideoPlayerEventMessage.fromList(it)
         }
@@ -1201,28 +1248,32 @@ private open class PigeonMessagesPigeonCodec : StandardMessageCodec() {
         stream.write(149)
         writeValue(stream, value.toList())
       }
-      is MediaMetadataMessage -> {
+      is ContentFingerprintMessage -> {
         stream.write(150)
         writeValue(stream, value.toList())
       }
-      is SubtitleSourceMessage -> {
+      is MediaMetadataMessage -> {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is ExternalSubtitleTrackMessage -> {
+      is SubtitleSourceMessage -> {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is CodecInfoMessage -> {
+      is ExternalSubtitleTrackMessage -> {
         stream.write(153)
         writeValue(stream, value.toList())
       }
-      is CodecCompatibilityMessage -> {
+      is CodecInfoMessage -> {
         stream.write(154)
         writeValue(stream, value.toList())
       }
-      is VideoPlayerEventMessage -> {
+      is CodecCompatibilityMessage -> {
         stream.write(155)
+        writeValue(stream, value.toList())
+      }
+      is VideoPlayerEventMessage -> {
+        stream.write(156)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1449,6 +1500,27 @@ interface ProVideoPlayerHostApi {
    * - [quality]: JPEG quality (0-100, default 80)
    */
   fun extractVideoFrame(source: VideoSourceMessage, positionMs: Long, maxWidth: Long?, maxHeight: Long?, quality: Long?, callback: (Result<ByteArray?>) -> Unit)
+  /**
+   * Extracts a content-based fingerprint for video deduplication.
+   *
+   * Reads 8KB samples from 3 positions (beginning, middle, end) and computes
+   * a hash. This allows distinguishing trimmed versions of the same video
+   * that would have identical metadata.
+   *
+   * Returns a [ContentFingerprintMessage] containing:
+   * - fingerprint: SHA-256 hash of content samples (hex string)
+   * - fileSize: File size in bytes (for local files)
+   * - error: Error message if extraction failed
+   *
+   * Platform implementations:
+   * - Local files: Direct file reads with 8KB at start, middle, end
+   * - Network URLs: HTTP Range requests (may not be supported by all servers)
+   * - Assets: AssetManager reads
+   *
+   * The fingerprint can be combined with [VideoMetadata.metadataFingerprint]
+   * for robust deduplication.
+   */
+  fun extractContentFingerprint(source: VideoSourceMessage, callback: (Result<ContentFingerprintMessage>) -> Unit)
 
   companion object {
     /** The codec used by ProVideoPlayerHostApi. */
@@ -2849,6 +2921,26 @@ interface ProVideoPlayerHostApi {
             val maxHeightArg = args[3] as Long?
             val qualityArg = args[4] as Long?
             api.extractVideoFrame(sourceArg, positionMsArg, maxWidthArg, maxHeightArg, qualityArg) { result: Result<ByteArray?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractContentFingerprint$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val sourceArg = args[0] as VideoSourceMessage
+            api.extractContentFingerprint(sourceArg) { result: Result<ContentFingerprintMessage> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

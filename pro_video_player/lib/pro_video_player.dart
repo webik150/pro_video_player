@@ -58,6 +58,8 @@ export 'package:pro_video_player_platform_interface/pro_video_player_platform_in
         Chapter,
         ChaptersExtractedEvent,
         ClosedCaptionFile,
+        ContentFingerprint,
+        ContentFingerprintException,
         ControlsMode,
         CurrentChapterChangedEvent,
         DataSourceType,
