@@ -1,15 +1,19 @@
 package dev.pro_video_player.android
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Resources
 import android.content.res.TypedArray
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import dev.pro_video_player.android.ProVideoPlayerPlugin.Companion.verboseLog
+import android.util.Log
 import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import android.view.View
+import androidx.fragment.app.FragmentActivity
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
@@ -61,6 +65,7 @@ class MediaRouteButtonPlatformView(
     private var castStateListener: CastStateListener? = null
     private var castContext: CastContext? = null
     private var currentTintColor: Int? = null
+    private var isFragmentActivityAvailable: Boolean = false
 
     init {
         channel = MethodChannel(
@@ -91,6 +96,35 @@ class MediaRouteButtonPlatformView(
             targetSizePx,
             targetSizePx
         )
+
+        // Check if the activity is a FragmentActivity (required for MediaRouteButton dialog)
+        val activity = getActivity(context)
+        isFragmentActivityAvailable = activity is FragmentActivity
+
+        if (!isFragmentActivityAvailable) {
+            Log.w(TAG, """
+                |
+                |════════════════════════════════════════════════════════════════════════════════
+                | CAST BUTTON DISABLED: FragmentActivity required
+                |════════════════════════════════════════════════════════════════════════════════
+                | The Cast button requires the MainActivity to extend FlutterFragmentActivity.
+                | Current activity: ${activity?.javaClass?.name ?: "null"}
+                |
+                | To fix this, update your MainActivity.kt:
+                |
+                |   // Change this:
+                |   import io.flutter.embedding.android.FlutterActivity
+                |   class MainActivity: FlutterActivity()
+                |
+                |   // To this:
+                |   import io.flutter.embedding.android.FlutterFragmentActivity
+                |   class MainActivity: FlutterFragmentActivity()
+                |
+                | The cast button will be hidden until this is fixed.
+                |════════════════════════════════════════════════════════════════════════════════
+            """.trimMargin())
+            mediaRouteButton.visibility = View.GONE
+        }
 
         // Initialize with CastButtonFactory
         try {
@@ -196,6 +230,12 @@ class MediaRouteButtonPlatformView(
             }
             "showDialog" -> {
                 // Programmatically trigger the route picker dialog
+                if (!isFragmentActivityAvailable) {
+                    Log.w(TAG, "Cannot show cast dialog: MainActivity must extend FlutterFragmentActivity")
+                    result.error("FRAGMENT_ACTIVITY_REQUIRED",
+                        "Cast dialog requires MainActivity to extend FlutterFragmentActivity", null)
+                    return
+                }
                 mediaRouteButton.performClick()
                 result.success(null)
             }
@@ -276,5 +316,19 @@ class MediaRouteButtonPlatformView(
 
         // If all attempts fail, throw the original error
         throw IllegalArgumentException("Failed to create MediaRouteButton: all context approaches failed due to transparent background theme issue")
+    }
+
+    /**
+     * Extracts the Activity from a Context, unwrapping ContextWrappers if necessary.
+     */
+    private fun getActivity(context: Context): Activity? {
+        var ctx = context
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) {
+                return ctx
+            }
+            ctx = ctx.baseContext
+        }
+        return null
     }
 }

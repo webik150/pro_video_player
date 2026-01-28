@@ -137,6 +137,42 @@ class ProVideoPlayerController extends ProVideoPlayerControllerBase
   bool _isDisposed = false;
   bool _isRetrying = false;
 
+  // ==================== Static Methods ====================
+
+  /// Extracts video metadata from a source without initializing a full player.
+  ///
+  /// This is useful for:
+  /// - Showing video info (duration, resolution) in file browsers
+  /// - Validating video files before playback
+  /// - Pre-loading metadata for better UX
+  ///
+  /// Uses lightweight platform-specific APIs:
+  /// - **iOS/macOS**: `AVURLAsset.loadValuesAsynchronously`
+  /// - **Android**: `MediaMetadataRetriever` for local files, temporary ExoPlayer for network
+  /// - **Web**: Temporary video element with `loadedmetadata` event
+  ///
+  /// The [timeout] parameter specifies the maximum time to wait for metadata
+  /// extraction. Defaults to 30 seconds. For local files, timeout may not apply.
+  ///
+  /// Throws [MetadataExtractionException] if extraction fails (network error,
+  /// invalid source, timeout, unsupported format).
+  ///
+  /// Example:
+  /// ```dart
+  /// try {
+  ///   final metadata = await ProVideoPlayerController.extractMetadata(
+  ///     VideoSource.file('/path/to/video.mp4'),
+  ///   );
+  ///   print('Duration: ${metadata.duration}');
+  ///   print('Resolution: ${metadata.resolution}');
+  ///   print('Codec: ${metadata.videoCodec}');
+  /// } on MetadataExtractionException catch (e) {
+  ///   print('Failed: ${e.code} - ${e.message}');
+  /// }
+  /// ```
+  static Future<VideoMetadata> extractMetadata(VideoSource source, {Duration timeout = const Duration(seconds: 30)}) =>
+      ProVideoPlayerPlatform.instance.extractMetadata(source, timeout: timeout);
+
   // ==================== Base Class Overrides ====================
 
   @override

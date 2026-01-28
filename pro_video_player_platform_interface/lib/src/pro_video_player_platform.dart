@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
@@ -614,6 +616,86 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
   /// ```
   Future<VideoMetadata?> getVideoMetadata(int playerId) {
     throw UnimplementedError('getVideoMetadata() has not been implemented.');
+  }
+
+  /// Extracts video metadata from a source without keeping a player active.
+  ///
+  /// This is useful for:
+  /// - Showing video info (duration, resolution) in file browsers
+  /// - Validating video files before playback
+  /// - Pre-loading metadata for better UX
+  ///
+  /// Creates a temporary player internally to extract metadata, then disposes it.
+  /// This uses the same native player infrastructure as regular playback.
+  ///
+  /// The [timeout] parameter specifies the maximum time to wait for metadata
+  /// extraction. Defaults to 30 seconds.
+  ///
+  /// Throws [MetadataExtractionException] if extraction fails (network error,
+  /// invalid source, timeout, unsupported format).
+  ///
+  /// Example:
+  /// ```dart
+  /// try {
+  ///   final metadata = await platform.extractMetadata(
+  ///     VideoSource.file('/path/to/video.mp4'),
+  ///   );
+  ///   print('Duration: ${metadata.duration}');
+  ///   print('Resolution: ${metadata.resolution}');
+  /// } on MetadataExtractionException catch (e) {
+  ///   print('Failed: ${e.code} - ${e.message}');
+  /// }
+  /// ```
+  Future<VideoMetadata> extractMetadata(VideoSource source, {Duration timeout = const Duration(seconds: 30)}) async {
+    int? playerId;
+    StreamSubscription<VideoPlayerEvent>? subscription;
+
+    try {
+      // Create a temporary player with minimal options
+      playerId = await create(source: source);
+
+      // Wait for metadata extraction event or timeout
+      final completer = Completer<VideoMetadata>();
+
+      subscription = events(playerId).listen((event) {
+        if (event is VideoMetadataExtractedEvent) {
+          if (!completer.isCompleted) {
+            completer.complete(event.metadata);
+          }
+        } else if (event is ErrorEvent) {
+          if (!completer.isCompleted) {
+            completer.completeError(MetadataExtractionException(event.code ?? 'ERROR', event.message));
+          }
+        }
+      });
+
+      // Also try to fetch metadata directly (in case event was already sent)
+      final existingMetadata = await getVideoMetadata(playerId);
+      if (existingMetadata != null && existingMetadata.isNotEmpty && !completer.isCompleted) {
+        completer.complete(existingMetadata);
+      }
+
+      // Wait with timeout
+      final metadata = await completer.future.timeout(
+        timeout,
+        onTimeout: () => throw MetadataExtractionException(
+          'TIMEOUT',
+          'Metadata extraction timed out after ${timeout.inSeconds} seconds',
+        ),
+      );
+
+      return metadata;
+    } on MetadataExtractionException {
+      rethrow;
+    } catch (e) {
+      throw MetadataExtractionException('EXTRACTION_FAILED', 'Failed to extract metadata: $e');
+    } finally {
+      // Clean up
+      await subscription?.cancel();
+      if (playerId != null) {
+        await dispose(playerId);
+      }
+    }
   }
 
   // ==================== Casting ====================

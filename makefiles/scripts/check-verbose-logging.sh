@@ -67,6 +67,12 @@ check_kotlin() {
                     continue
                 fi
 
+                # Allow MediaRouteButtonView.kt - Cast dialog logging is required for debugging
+                # cast connectivity issues which are notoriously difficult to diagnose
+                if [[ "$file" == *"MediaRouteButtonView.kt" ]]; then
+                    continue
+                fi
+
                 # This is an unconditional log call
                 local relative_file="${file#$ROOT_DIR/}"
                 local trimmed_line=$(echo "$line" | sed 's/^[[:space:]]*//' | cut -c1-60)

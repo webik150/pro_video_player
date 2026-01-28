@@ -19,6 +19,7 @@ export 'duration_range.dart';
 export 'embedded_subtitle_track.dart';
 export 'external_subtitle_track.dart';
 export 'media_metadata.dart';
+export 'metadata_extraction_exception.dart';
 export 'pip_action.dart';
 export 'pip_options.dart';
 export 'platform_info.dart';
