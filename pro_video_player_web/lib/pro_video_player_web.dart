@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
@@ -329,6 +332,134 @@ class ProVideoPlayerWeb extends ProVideoPlayerPlatform {
 
   @override
   Future<VideoMetadata?> getVideoMetadata(int playerId) async => _getPlayer(playerId).getVideoMetadata();
+
+  @override
+  Future<Uint8List?> extractEmbeddedArtwork(VideoSource source) async {
+    // Web doesn't have APIs to read embedded artwork from video container metadata
+    verboseLog('extractEmbeddedArtwork() not supported on web', tag: 'Plugin');
+    return null;
+  }
+
+  @override
+  Future<Uint8List?> extractVideoFrame(
+    VideoSource source, {
+    Duration position = Duration.zero,
+    int? maxWidth,
+    int? maxHeight,
+    int? quality,
+  }) async {
+    verboseLog('extractVideoFrame() called for position: $position', tag: 'Plugin');
+
+    try {
+      // Create a temporary video element
+      final video = web.document.createElement('video') as web.HTMLVideoElement;
+      video.crossOrigin = 'anonymous';
+      video.preload = 'metadata';
+
+      // Set the source URL
+      final url = switch (source) {
+        NetworkVideoSource(:final url) => url,
+        FileVideoSource(:final path) => path,
+        AssetVideoSource(:final assetPath) => 'assets/$assetPath',
+        PlaylistVideoSource() => throw UnsupportedError('Playlist sources not supported for thumbnail extraction'),
+      };
+      video.src = url;
+
+      // Wait for metadata to load using addEventListener
+      final metadataCompleter = Completer<void>();
+      void onLoadedMetadata(web.Event e) {
+        if (!metadataCompleter.isCompleted) metadataCompleter.complete();
+      }
+
+      void onError(web.Event e) {
+        if (!metadataCompleter.isCompleted) metadataCompleter.completeError('Failed to load video');
+      }
+
+      video.addEventListener('loadedmetadata', onLoadedMetadata.toJS);
+      video.addEventListener('error', onError.toJS);
+
+      try {
+        await metadataCompleter.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('Video metadata load timeout'),
+        );
+      } finally {
+        video.removeEventListener('loadedmetadata', onLoadedMetadata.toJS);
+        video.removeEventListener('error', onError.toJS);
+      }
+
+      // Seek to the requested position
+      final positionSeconds = position.inMilliseconds / 1000.0;
+      video.currentTime = positionSeconds;
+
+      // Wait for seek to complete
+      final seekCompleter = Completer<void>();
+      void onSeeked(web.Event e) {
+        if (!seekCompleter.isCompleted) seekCompleter.complete();
+      }
+
+      video.addEventListener('seeked', onSeeked.toJS);
+      try {
+        await seekCompleter.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('Video seek timeout'),
+        );
+      } finally {
+        video.removeEventListener('seeked', onSeeked.toJS);
+      }
+
+      // Calculate output dimensions
+      final videoWidth = video.videoWidth;
+      final videoHeight = video.videoHeight;
+      var outputWidth = videoWidth;
+      var outputHeight = videoHeight;
+
+      if (maxWidth != null || maxHeight != null) {
+        final aspectRatio = videoWidth / videoHeight;
+        if (maxWidth != null && maxHeight != null) {
+          if (videoWidth > maxWidth || videoHeight > maxHeight) {
+            if (maxWidth / aspectRatio <= maxHeight) {
+              outputWidth = maxWidth;
+              outputHeight = (maxWidth / aspectRatio).round();
+            } else {
+              outputHeight = maxHeight;
+              outputWidth = (maxHeight * aspectRatio).round();
+            }
+          }
+        } else if (maxWidth != null && videoWidth > maxWidth) {
+          outputWidth = maxWidth;
+          outputHeight = (maxWidth / aspectRatio).round();
+        } else if (maxHeight != null && videoHeight > maxHeight) {
+          outputHeight = maxHeight;
+          outputWidth = (maxHeight * aspectRatio).round();
+        }
+      }
+
+      // Create canvas and draw the video frame
+      final canvas = web.document.createElement('canvas') as web.HTMLCanvasElement;
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      final ctx = canvas.getContext('2d');
+      if (ctx == null) {
+        verboseLog('extractVideoFrame() failed: could not get canvas context', tag: 'Plugin');
+        return null;
+      }
+      (ctx as web.CanvasRenderingContext2D).drawImage(video, 0, 0, outputWidth.toDouble(), outputHeight.toDouble());
+
+      // Export as JPEG
+      final dataUrl = canvas.toDataURL('image/jpeg');
+
+      // Convert data URL to bytes
+      final base64Data = dataUrl.split(',').last;
+      final bytes = base64Decode(base64Data);
+
+      verboseLog('extractVideoFrame() result: ${bytes.length} bytes', tag: 'Plugin');
+      return bytes;
+    } catch (e) {
+      verboseLog('extractVideoFrame() failed: $e', tag: 'Plugin');
+      return null;
+    }
+  }
 
   @override
   Future<ExternalSubtitleTrack?> addExternalSubtitle(int playerId, SubtitleSource source) async {

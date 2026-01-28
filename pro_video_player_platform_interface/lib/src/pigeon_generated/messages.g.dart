@@ -3022,6 +3022,86 @@ class ProVideoPlayerHostApi {
       return (pigeonVar_replyList[0] as List<Object?>?)!.cast<String?>();
     }
   }
+
+  /// Extracts embedded artwork/thumbnail from video container metadata.
+  ///
+  /// Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+  /// video container, null otherwise. Does not decode video frames - only
+  /// reads pre-existing artwork stored in the container metadata.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getEmbeddedPicture()
+  /// - iOS/macOS: AVAsset.metadata with AVMetadataCommonKeyArtwork
+  /// - Web: Returns null (no API for this)
+  ///
+  /// Common sources of embedded artwork:
+  /// - iTunes movies (MP4/M4V with cover art)
+  /// - MKV files with cover attachments
+  /// - Music videos with album art
+  Future<Uint8List?> extractEmbeddedArtwork(VideoSourceMessage source) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractEmbeddedArtwork$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_channel.send(<Object?>[source]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return (pigeonVar_replyList[0] as Uint8List?);
+    }
+  }
+
+  /// Extracts a video frame at the specified position as an image.
+  ///
+  /// Returns the image bytes (JPEG) of the video frame at [positionMs].
+  /// If [positionMs] is 0, extracts the first available frame.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getFrameAtTime()
+  /// - iOS/macOS: AVAssetImageGenerator.generateCGImagesAsynchronously()
+  /// - Web: Draw video to canvas, export as JPEG
+  ///
+  /// Optional parameters:
+  /// - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+  /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+  /// - [quality]: JPEG quality (0-100, default 80)
+  Future<Uint8List?> extractVideoFrame(
+    VideoSourceMessage source,
+    int positionMs,
+    int? maxWidth,
+    int? maxHeight,
+    int? quality,
+  ) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractVideoFrame$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_channel.send(<Object?>[source, positionMs, maxWidth, maxHeight, quality]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return (pigeonVar_replyList[0] as Uint8List?);
+    }
+  }
 }
 
 /// Flutter API for callbacks from the platform to Dart.

@@ -4365,6 +4365,86 @@ void ProVideoPlayerHostApi::SetUp(
       channel.SetMessageHandler(nullptr);
     }
   }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractEmbeddedArtwork" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_source_arg = args.at(0);
+          if (encodable_source_arg.IsNull()) {
+            reply(WrapError("source_arg unexpectedly null."));
+            return;
+          }
+          const auto& source_arg = std::any_cast<const VideoSourceMessage&>(std::get<CustomEncodableValue>(encodable_source_arg));
+          api->ExtractEmbeddedArtwork(source_arg, [reply](ErrorOr<std::optional<std::vector<uint8_t>>>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            auto output_optional = std::move(output).TakeValue();
+            if (output_optional) {
+              wrapped.push_back(EncodableValue(std::move(output_optional).value()));
+            } else {
+              wrapped.push_back(EncodableValue());
+            }
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractVideoFrame" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_source_arg = args.at(0);
+          if (encodable_source_arg.IsNull()) {
+            reply(WrapError("source_arg unexpectedly null."));
+            return;
+          }
+          const auto& source_arg = std::any_cast<const VideoSourceMessage&>(std::get<CustomEncodableValue>(encodable_source_arg));
+          const auto& encodable_position_ms_arg = args.at(1);
+          if (encodable_position_ms_arg.IsNull()) {
+            reply(WrapError("position_ms_arg unexpectedly null."));
+            return;
+          }
+          const int64_t position_ms_arg = encodable_position_ms_arg.LongValue();
+          const auto& encodable_max_width_arg = args.at(2);
+          const auto* max_width_arg = std::get_if<int64_t>(&encodable_max_width_arg);
+          const auto& encodable_max_height_arg = args.at(3);
+          const auto* max_height_arg = std::get_if<int64_t>(&encodable_max_height_arg);
+          const auto& encodable_quality_arg = args.at(4);
+          const auto* quality_arg = std::get_if<int64_t>(&encodable_quality_arg);
+          api->ExtractVideoFrame(source_arg, position_ms_arg, max_width_arg, max_height_arg, quality_arg, [reply](ErrorOr<std::optional<std::vector<uint8_t>>>&& output) {
+            if (output.has_error()) {
+              reply(WrapError(output.error()));
+              return;
+            }
+            EncodableList wrapped;
+            auto output_optional = std::move(output).TakeValue();
+            if (output_optional) {
+              wrapped.push_back(EncodableValue(std::move(output_optional).value()));
+            } else {
+              wrapped.push_back(EncodableValue());
+            }
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
 }
 
 EncodableValue ProVideoPlayerHostApi::WrapError(std::string_view error_message) {

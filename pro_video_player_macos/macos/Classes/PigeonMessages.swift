@@ -1392,6 +1392,37 @@ protocol ProVideoPlayerHostApi {
   /// This can be used to suggest transcoding options when
   /// a file contains unsupported codecs.
   func getSupportedCodecs(completion: @escaping (Result<[String?], Error>) -> Void)
+  /// Extracts embedded artwork/thumbnail from video container metadata.
+  ///
+  /// Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+  /// video container, null otherwise. Does not decode video frames - only
+  /// reads pre-existing artwork stored in the container metadata.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getEmbeddedPicture()
+  /// - iOS/macOS: AVAsset.metadata with AVMetadataCommonKeyArtwork
+  /// - Web: Returns null (no API for this)
+  ///
+  /// Common sources of embedded artwork:
+  /// - iTunes movies (MP4/M4V with cover art)
+  /// - MKV files with cover attachments
+  /// - Music videos with album art
+  func extractEmbeddedArtwork(source: VideoSourceMessage, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
+  /// Extracts a video frame at the specified position as an image.
+  ///
+  /// Returns the image bytes (JPEG) of the video frame at [positionMs].
+  /// If [positionMs] is 0, extracts the first available frame.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getFrameAtTime()
+  /// - iOS/macOS: AVAssetImageGenerator.generateCGImagesAsynchronously()
+  /// - Web: Draw video to canvas, export as JPEG
+  ///
+  /// Optional parameters:
+  /// - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+  /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+  /// - [quality]: JPEG quality (0-100, default 80)
+  func extractVideoFrame(source: VideoSourceMessage, positionMs: Int64, maxWidth: Int64?, maxHeight: Int64?, quality: Int64?, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -2659,6 +2690,73 @@ class ProVideoPlayerHostApiSetup {
       }
     } else {
       getSupportedCodecsChannel.setMessageHandler(nil)
+    }
+    /// Extracts embedded artwork/thumbnail from video container metadata.
+    ///
+    /// Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+    /// video container, null otherwise. Does not decode video frames - only
+    /// reads pre-existing artwork stored in the container metadata.
+    ///
+    /// Platform implementations:
+    /// - Android: MediaMetadataRetriever.getEmbeddedPicture()
+    /// - iOS/macOS: AVAsset.metadata with AVMetadataCommonKeyArtwork
+    /// - Web: Returns null (no API for this)
+    ///
+    /// Common sources of embedded artwork:
+    /// - iTunes movies (MP4/M4V with cover art)
+    /// - MKV files with cover attachments
+    /// - Music videos with album art
+    let extractEmbeddedArtworkChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractEmbeddedArtwork\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      extractEmbeddedArtworkChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let sourceArg = args[0] as! VideoSourceMessage
+        api.extractEmbeddedArtwork(source: sourceArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      extractEmbeddedArtworkChannel.setMessageHandler(nil)
+    }
+    /// Extracts a video frame at the specified position as an image.
+    ///
+    /// Returns the image bytes (JPEG) of the video frame at [positionMs].
+    /// If [positionMs] is 0, extracts the first available frame.
+    ///
+    /// Platform implementations:
+    /// - Android: MediaMetadataRetriever.getFrameAtTime()
+    /// - iOS/macOS: AVAssetImageGenerator.generateCGImagesAsynchronously()
+    /// - Web: Draw video to canvas, export as JPEG
+    ///
+    /// Optional parameters:
+    /// - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+    /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+    /// - [quality]: JPEG quality (0-100, default 80)
+    let extractVideoFrameChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.pro_video_player_platform_interface.ProVideoPlayerHostApi.extractVideoFrame\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      extractVideoFrameChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let sourceArg = args[0] as! VideoSourceMessage
+        let positionMsArg = args[1] as! Int64
+        let maxWidthArg: Int64? = nilOrValue(args[2])
+        let maxHeightArg: Int64? = nilOrValue(args[3])
+        let qualityArg: Int64? = nilOrValue(args[4])
+        api.extractVideoFrame(source: sourceArg, positionMs: positionMsArg, maxWidth: maxWidthArg, maxHeight: maxHeightArg, quality: qualityArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      extractVideoFrameChannel.setMessageHandler(nil)
     }
   }
 }

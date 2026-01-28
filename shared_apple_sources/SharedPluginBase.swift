@@ -722,6 +722,297 @@ open class SharedPluginBase: NSObject, ProVideoPlayerHostApi {
         completion(.success(metadata))
     }
 
+    func extractEmbeddedArtwork(source: VideoSourceMessage, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void) {
+        verboseLog("extractEmbeddedArtwork() called for source type: \(source.type)", tag: "Plugin")
+
+        // Build URL from source
+        let url: URL?
+        switch source.type {
+        case .network:
+            if let urlString = source.url {
+                url = URL(string: urlString)
+            } else {
+                url = nil
+            }
+        case .file:
+            if let path = source.path {
+                url = URL(fileURLWithPath: path)
+            } else {
+                url = nil
+            }
+        case .asset:
+            if let assetPath = source.assetPath {
+                #if os(iOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #elseif os(macOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #endif
+            } else {
+                url = nil
+            }
+        }
+
+        guard let assetUrl = url else {
+            completion(.failure(PigeonError(code: "INVALID_SOURCE", message: "Could not create URL from source", details: nil)))
+            return
+        }
+
+        // Create AVURLAsset with headers if needed
+        var options: [String: Any] = [:]
+        if source.type == .network, let headers = source.headers {
+            let cleanHeaders = headers.compactMapValues { $0 }
+            options["AVURLAssetHTTPHeaderFieldsKey"] = cleanHeaders
+        }
+
+        let asset = AVURLAsset(url: assetUrl, options: options.isEmpty ? nil : options)
+
+        // Load metadata asynchronously
+        if #available(iOS 15.0, macOS 12.0, *) {
+            Task {
+                do {
+                    let metadata = try await asset.load(.metadata)
+                    let artworkData = self.extractArtworkFromMetadata(metadata)
+                    await MainActor.run {
+                        if let data = artworkData {
+                            verboseLog("extractEmbeddedArtwork() found artwork: \(data.count) bytes", tag: "Plugin")
+                            completion(.success(FlutterStandardTypedData(bytes: data)))
+                        } else {
+                            verboseLog("extractEmbeddedArtwork() no artwork found", tag: "Plugin")
+                            completion(.success(nil))
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        verboseLog("extractEmbeddedArtwork() failed: \(error)", tag: "Plugin")
+                        // Return nil instead of error for unsupported sources
+                        completion(.success(nil))
+                    }
+                }
+            }
+        } else {
+            // iOS 14 / macOS 11 fallback
+            asset.loadValuesAsynchronously(forKeys: ["metadata"]) {
+                var error: NSError?
+                let status = asset.statusOfValue(forKey: "metadata", error: &error)
+
+                DispatchQueue.main.async {
+                    if status == .loaded {
+                        let artworkData = self.extractArtworkFromMetadata(asset.metadata)
+                        if let data = artworkData {
+                            verboseLog("extractEmbeddedArtwork() found artwork: \(data.count) bytes", tag: "Plugin")
+                            completion(.success(FlutterStandardTypedData(bytes: data)))
+                        } else {
+                            verboseLog("extractEmbeddedArtwork() no artwork found", tag: "Plugin")
+                            completion(.success(nil))
+                        }
+                    } else {
+                        verboseLog("extractEmbeddedArtwork() failed to load metadata: \(error?.localizedDescription ?? "unknown")", tag: "Plugin")
+                        // Return nil instead of error
+                        completion(.success(nil))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Extracts artwork data from AVMetadataItem array.
+    private func extractArtworkFromMetadata(_ metadata: [AVMetadataItem]) -> Data? {
+        // Look for artwork in common metadata
+        let artworkItems = AVMetadataItem.metadataItems(
+            from: metadata,
+            filteredByIdentifier: .commonIdentifierArtwork
+        )
+
+        for item in artworkItems {
+            if let data = item.dataValue {
+                return data
+            }
+            // Some items store artwork as an image
+            if let value = item.value {
+                if let data = value as? Data {
+                    return data
+                }
+                #if os(iOS)
+                    if let image = value as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
+                        return data
+                    }
+                #elseif os(macOS)
+                    if let image = value as? NSImage {
+                        if let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                            let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+                            if let data = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) {
+                                return data
+                            }
+                        }
+                    }
+                #endif
+            }
+        }
+
+        // Also check for iTunes-style artwork (for MP4/M4V files)
+        let iTunesArtwork = metadata.first { item in
+            item.identifier == .iTunesMetadataCoverArt
+        }
+
+        if let item = iTunesArtwork {
+            if let data = item.dataValue {
+                return data
+            }
+        }
+
+        return nil
+    }
+
+    func extractVideoFrame(
+        source: VideoSourceMessage,
+        positionMs: Int64,
+        maxWidth: Int64?,
+        maxHeight: Int64?,
+        quality: Int64?,
+        completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void
+    ) {
+        verboseLog("extractVideoFrame() called for position: \(positionMs)ms", tag: "Plugin")
+
+        // Build URL from source (same logic as extractEmbeddedArtwork)
+        let url: URL?
+        switch source.type {
+        case .network:
+            if let urlString = source.url {
+                url = URL(string: urlString)
+            } else {
+                url = nil
+            }
+        case .file:
+            if let path = source.path {
+                url = URL(fileURLWithPath: path)
+            } else {
+                url = nil
+            }
+        case .asset:
+            if let assetPath = source.assetPath {
+                #if os(iOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #elseif os(macOS)
+                    let registrar = self.registrar as! FlutterPluginRegistrar
+                    let key = registrar.lookupKey(forAsset: assetPath)
+                    if let bundlePath = Bundle.main.path(forResource: key, ofType: nil) {
+                        url = URL(fileURLWithPath: bundlePath)
+                    } else {
+                        url = nil
+                    }
+                #endif
+            } else {
+                url = nil
+            }
+        }
+
+        guard let assetUrl = url else {
+            completion(.failure(PigeonError(code: "INVALID_SOURCE", message: "Could not create URL from source", details: nil)))
+            return
+        }
+
+        // Create AVURLAsset with headers if needed
+        var options: [String: Any] = [:]
+        if source.type == .network, let headers = source.headers {
+            let cleanHeaders = headers.compactMapValues { $0 }
+            options["AVURLAssetHTTPHeaderFieldsKey"] = cleanHeaders
+        }
+
+        let asset = AVURLAsset(url: assetUrl, options: options.isEmpty ? nil : options)
+
+        // Create image generator
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        imageGenerator.requestedTimeToleranceBefore = .zero
+        imageGenerator.requestedTimeToleranceAfter = .zero
+
+        // Set max size if specified
+        if let maxW = maxWidth, let maxH = maxHeight {
+            imageGenerator.maximumSize = CGSize(width: CGFloat(maxW), height: CGFloat(maxH))
+        } else if let maxW = maxWidth {
+            imageGenerator.maximumSize = CGSize(width: CGFloat(maxW), height: CGFloat.greatestFiniteMagnitude)
+        } else if let maxH = maxHeight {
+            imageGenerator.maximumSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat(maxH))
+        }
+
+        // Convert position to CMTime
+        let time = CMTime(value: CMTimeValue(positionMs), timescale: 1000)
+
+        // Generate image asynchronously
+        if #available(iOS 16.0, macOS 13.0, *) {
+            Task {
+                do {
+                    let (cgImage, _) = try await imageGenerator.image(at: time)
+                    let jpegData = self.cgImageToJPEG(cgImage, quality: quality)
+                    await MainActor.run {
+                        if let data = jpegData {
+                            verboseLog("extractVideoFrame() result: \(data.count) bytes", tag: "Plugin")
+                            completion(.success(FlutterStandardTypedData(bytes: data)))
+                        } else {
+                            verboseLog("extractVideoFrame() failed to convert to JPEG", tag: "Plugin")
+                            completion(.success(nil))
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        verboseLog("extractVideoFrame() failed: \(error)", tag: "Plugin")
+                        completion(.success(nil))
+                    }
+                }
+            }
+        } else {
+            // Fallback for older OS versions
+            imageGenerator.generateCGImagesAsynchronously(forTimes: [NSValue(time: time)]) { _, cgImage, _, result, error in
+                DispatchQueue.main.async {
+                    if result == .succeeded, let cgImage = cgImage {
+                        let jpegData = self.cgImageToJPEG(cgImage, quality: quality)
+                        if let data = jpegData {
+                            verboseLog("extractVideoFrame() result: \(data.count) bytes", tag: "Plugin")
+                            completion(.success(FlutterStandardTypedData(bytes: data)))
+                        } else {
+                            verboseLog("extractVideoFrame() failed to convert to JPEG", tag: "Plugin")
+                            completion(.success(nil))
+                        }
+                    } else {
+                        verboseLog("extractVideoFrame() failed: \(error?.localizedDescription ?? "unknown")", tag: "Plugin")
+                        completion(.success(nil))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Converts a CGImage to JPEG data.
+    private func cgImageToJPEG(_ cgImage: CGImage, quality: Int64?) -> Data? {
+        let compressionQuality = CGFloat(quality ?? 80) / 100.0
+
+        #if os(iOS)
+            let uiImage = UIImage(cgImage: cgImage)
+            return uiImage.jpegData(compressionQuality: compressionQuality)
+        #elseif os(macOS)
+            let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+            return bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
+        #endif
+    }
+
     func getVideoQualities(playerId: Int64, completion: @escaping (Result<[VideoQualityTrackMessage?], Error>) -> Void) {
 
         guard let player = players[Int(playerId)] else {

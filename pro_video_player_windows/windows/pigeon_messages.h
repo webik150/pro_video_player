@@ -1554,6 +1554,45 @@ class ProVideoPlayerHostApi {
   // This can be used to suggest transcoding options when
   // a file contains unsupported codecs.
   virtual void GetSupportedCodecs(std::function<void(ErrorOr<flutter::EncodableList> reply)> result) = 0;
+  // Extracts embedded artwork/thumbnail from video container metadata.
+  //
+  // Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+  // video container, null otherwise. Does not decode video frames - only
+  // reads pre-existing artwork stored in the container metadata.
+  //
+  // Platform implementations:
+  // - Android: MediaMetadataRetriever.getEmbeddedPicture()
+  // - iOS/macOS: AVAsset.metadata with AVMetadataCommonKeyArtwork
+  // - Web: Returns null (no API for this)
+  //
+  // Common sources of embedded artwork:
+  // - iTunes movies (MP4/M4V with cover art)
+  // - MKV files with cover attachments
+  // - Music videos with album art
+  virtual void ExtractEmbeddedArtwork(
+    const VideoSourceMessage& source,
+    std::function<void(ErrorOr<std::optional<std::vector<uint8_t>>> reply)> result) = 0;
+  // Extracts a video frame at the specified position as an image.
+  //
+  // Returns the image bytes (JPEG) of the video frame at [positionMs].
+  // If [positionMs] is 0, extracts the first available frame.
+  //
+  // Platform implementations:
+  // - Android: MediaMetadataRetriever.getFrameAtTime()
+  // - iOS/macOS: AVAssetImageGenerator.generateCGImagesAsynchronously()
+  // - Web: Draw video to canvas, export as JPEG
+  //
+  // Optional parameters:
+  // - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+  // - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+  // - [quality]: JPEG quality (0-100, default 80)
+  virtual void ExtractVideoFrame(
+    const VideoSourceMessage& source,
+    int64_t position_ms,
+    const int64_t* max_width,
+    const int64_t* max_height,
+    const int64_t* quality,
+    std::function<void(ErrorOr<std::optional<std::vector<uint8_t>>> reply)> result) = 0;
 
   // The codec used by ProVideoPlayerHostApi.
   static const flutter::StandardMessageCodec& GetCodec();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show protected;
 
@@ -460,6 +461,24 @@ abstract class PigeonMethodChannelBase extends ProVideoPlayerPlatform implements
       artworkUrl: metadata.artworkUrl,
     );
     await _hostApi.setMediaMetadata(playerId, message);
+  }
+
+  @override
+  Future<Uint8List?> extractEmbeddedArtwork(VideoSource source) async {
+    final sourceMessage = _convertVideoSource(source);
+    return _hostApi.extractEmbeddedArtwork(sourceMessage);
+  }
+
+  @override
+  Future<Uint8List?> extractVideoFrame(
+    VideoSource source, {
+    Duration position = Duration.zero,
+    int? maxWidth,
+    int? maxHeight,
+    int? quality,
+  }) async {
+    final sourceMessage = _convertVideoSource(source);
+    return _hostApi.extractVideoFrame(sourceMessage, position.inMilliseconds, maxWidth, maxHeight, quality);
   }
 
   // ==================== Casting ====================

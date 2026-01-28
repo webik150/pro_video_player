@@ -7,7 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -1012,6 +1015,155 @@ class ProVideoPlayerPlugin: FlutterPlugin, ActivityAware, Application.ActivityLi
     override fun setMediaMetadata(playerId: Long, metadata: MediaMetadataMessage, callback: (Result<Unit>) -> Unit) {
         val metadataMap = convertMediaMetadataToMap(metadata)
         delegatePlayerMethod(playerId, { it.setMediaMetadata(metadataMap) }, callback)
+    }
+
+    override fun extractEmbeddedArtwork(source: VideoSourceMessage, callback: (Result<ByteArray?>) -> Unit) {
+        verboseLog("extractEmbeddedArtwork() called for source type: ${source.type}", TAG)
+        try {
+            val retriever = MediaMetadataRetriever()
+            try {
+                when (source.type) {
+                    VideoSourceType.FILE -> {
+                        val path = source.path
+                        if (path == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "File path is null", null)))
+                            return
+                        }
+                        retriever.setDataSource(path)
+                    }
+                    VideoSourceType.NETWORK -> {
+                        val url = source.url
+                        if (url == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "URL is null", null)))
+                            return
+                        }
+                        // Convert headers map to HashMap<String, String> for MediaMetadataRetriever
+                        val headers = source.headers?.mapNotNull { (k, v) ->
+                            if (k != null && v != null) k to v else null
+                        }?.toMap() ?: emptyMap()
+                        retriever.setDataSource(url, headers)
+                    }
+                    VideoSourceType.ASSET -> {
+                        val assetPath = source.assetPath
+                        if (assetPath == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "Asset path is null", null)))
+                            return
+                        }
+                        // Resolve Flutter asset path
+                        val flutterLoader = FlutterInjector.instance().flutterLoader()
+                        val resolvedPath = flutterLoader.getLookupKeyForAsset(assetPath)
+                        val assetFd = context.assets.openFd(resolvedPath)
+                        retriever.setDataSource(assetFd.fileDescriptor, assetFd.startOffset, assetFd.length)
+                        assetFd.close()
+                    }
+                }
+
+                // Get the embedded picture (album art / cover)
+                val artwork = retriever.embeddedPicture
+                verboseLog("extractEmbeddedArtwork() result: ${if (artwork != null) "${artwork.size} bytes" else "null"}", TAG)
+                callback(Result.success(artwork))
+            } finally {
+                retriever.release()
+            }
+        } catch (e: Exception) {
+            verboseLog("extractEmbeddedArtwork() failed: ${e.message}", TAG)
+            // Return null instead of error for unsupported sources (e.g., some network URLs)
+            callback(Result.success(null))
+        }
+    }
+
+    override fun extractVideoFrame(
+        source: VideoSourceMessage,
+        positionMs: Long,
+        maxWidth: Long?,
+        maxHeight: Long?,
+        quality: Long?,
+        callback: (Result<ByteArray?>) -> Unit
+    ) {
+        verboseLog("extractVideoFrame() called for position: ${positionMs}ms", TAG)
+        try {
+            val retriever = MediaMetadataRetriever()
+            try {
+                when (source.type) {
+                    VideoSourceType.FILE -> {
+                        val path = source.path
+                        if (path == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "File path is null", null)))
+                            return
+                        }
+                        retriever.setDataSource(path)
+                    }
+                    VideoSourceType.NETWORK -> {
+                        val url = source.url
+                        if (url == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "URL is null", null)))
+                            return
+                        }
+                        val headers = source.headers?.mapNotNull { (k, v) ->
+                            if (k != null && v != null) k to v else null
+                        }?.toMap() ?: emptyMap()
+                        retriever.setDataSource(url, headers)
+                    }
+                    VideoSourceType.ASSET -> {
+                        val assetPath = source.assetPath
+                        if (assetPath == null) {
+                            callback(Result.failure(FlutterError("INVALID_SOURCE", "Asset path is null", null)))
+                            return
+                        }
+                        val flutterLoader = FlutterInjector.instance().flutterLoader()
+                        val resolvedPath = flutterLoader.getLookupKeyForAsset(assetPath)
+                        val assetFd = context.assets.openFd(resolvedPath)
+                        retriever.setDataSource(assetFd.fileDescriptor, assetFd.startOffset, assetFd.length)
+                        assetFd.close()
+                    }
+                }
+
+                // Extract frame at the specified position (convert ms to us)
+                val timeUs = positionMs * 1000
+                var bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    retriever.getScaledFrameAtTime(
+                        timeUs,
+                        MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                        maxWidth?.toInt() ?: 512,
+                        maxHeight?.toInt() ?: 384
+                    )
+                } else {
+                    retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                }
+
+                if (bitmap == null) {
+                    verboseLog("extractVideoFrame() no frame found at position", TAG)
+                    callback(Result.success(null))
+                    return
+                }
+
+                // Scale if needed (for older APIs that don't support getScaledFrameAtTime)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1 && (maxWidth != null || maxHeight != null)) {
+                    val targetWidth = maxWidth?.toInt() ?: bitmap.width
+                    val targetHeight = maxHeight?.toInt() ?: bitmap.height
+                    val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+                    if (scaledBitmap != bitmap) {
+                        bitmap.recycle()
+                        bitmap = scaledBitmap
+                    }
+                }
+
+                // Convert to JPEG bytes
+                val outputStream = java.io.ByteArrayOutputStream()
+                val jpegQuality = (quality?.toInt() ?: 80).coerceIn(0, 100)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, outputStream)
+                bitmap.recycle()
+
+                val bytes = outputStream.toByteArray()
+                verboseLog("extractVideoFrame() result: ${bytes.size} bytes", TAG)
+                callback(Result.success(bytes))
+            } finally {
+                retriever.release()
+            }
+        } catch (e: Exception) {
+            verboseLog("extractVideoFrame() failed: ${e.message}", TAG)
+            callback(Result.success(null))
+        }
     }
 
     // MARK: - Casting Methods

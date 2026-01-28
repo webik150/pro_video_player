@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -696,6 +697,127 @@ abstract class ProVideoPlayerPlatform extends PlatformInterface {
         await dispose(playerId);
       }
     }
+  }
+
+  /// Extracts embedded artwork/thumbnail from video container metadata.
+  ///
+  /// Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+  /// video container, null otherwise. Does not decode video frames - only
+  /// reads pre-existing artwork stored in the container metadata.
+  ///
+  /// This is useful for:
+  /// - Displaying video thumbnails in file browsers
+  /// - Showing album art for music videos
+  /// - Preview images for movie files from iTunes
+  ///
+  /// Common sources of embedded artwork:
+  /// - iTunes movies (MP4/M4V with cover art)
+  /// - MKV files with cover attachments
+  /// - Music videos with album art
+  ///
+  /// Platform implementations:
+  /// - **Android**: Uses `MediaMetadataRetriever.getEmbeddedPicture()`
+  /// - **iOS/macOS**: Uses `AVAsset.metadata` with `AVMetadataCommonKeyArtwork`
+  /// - **Web**: Returns null (no API for this)
+  ///
+  /// Note: This only returns embedded artwork. Most videos (especially
+  /// user-recorded or streaming content) do not have embedded artwork.
+  /// For generating thumbnails from video frames, use frame extraction
+  /// instead (not yet implemented).
+  ///
+  /// Example:
+  /// ```dart
+  /// final artwork = await platform.extractEmbeddedArtwork(
+  ///   VideoSource.file('/path/to/movie.m4v'),
+  /// );
+  /// if (artwork != null) {
+  ///   // Display as image
+  ///   Image.memory(artwork);
+  /// }
+  /// ```
+  Future<Uint8List?> extractEmbeddedArtwork(VideoSource source) {
+    throw UnimplementedError('extractEmbeddedArtwork() has not been implemented.');
+  }
+
+  /// Extracts a video frame at the specified position as an image.
+  ///
+  /// Returns the image bytes (JPEG) of the video frame at [position].
+  /// If [position] is Duration.zero, extracts the first available frame.
+  ///
+  /// Platform implementations:
+  /// - **Android**: Uses `MediaMetadataRetriever.getFrameAtTime()`
+  /// - **iOS/macOS**: Uses `AVAssetImageGenerator.generateCGImagesAsynchronously()`
+  /// - **Web**: Draws video to canvas and exports as JPEG
+  ///
+  /// Optional parameters:
+  /// - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+  /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+  /// - [quality]: JPEG quality (0-100, default 80)
+  ///
+  /// Example:
+  /// ```dart
+  /// final frame = await platform.extractVideoFrame(
+  ///   VideoSource.file('/path/to/video.mp4'),
+  ///   position: Duration(seconds: 5),
+  ///   maxWidth: 320,
+  /// );
+  /// if (frame != null) {
+  ///   Image.memory(frame);
+  /// }
+  /// ```
+  Future<Uint8List?> extractVideoFrame(
+    VideoSource source, {
+    Duration position = Duration.zero,
+    int? maxWidth,
+    int? maxHeight,
+    int? quality,
+  }) {
+    throw UnimplementedError('extractVideoFrame() has not been implemented.');
+  }
+
+  /// Extracts a thumbnail from a video source.
+  ///
+  /// This method first tries to extract embedded artwork from the video
+  /// container metadata. If no embedded artwork is found, it falls back to
+  /// extracting a video frame at the specified position.
+  ///
+  /// This is the recommended method for getting video thumbnails as it:
+  /// 1. Returns high-quality embedded artwork when available (iTunes movies, etc.)
+  /// 2. Falls back to frame extraction for videos without embedded artwork
+  ///
+  /// Parameters:
+  /// - [source]: The video source to extract thumbnail from
+  /// - [position]: Position for frame extraction fallback (default: first frame)
+  /// - [maxWidth]: Maximum width of the output image
+  /// - [maxHeight]: Maximum height of the output image
+  /// - [quality]: JPEG quality for frame extraction (0-100, default 80)
+  ///
+  /// Example:
+  /// ```dart
+  /// final thumbnail = await platform.extractThumbnail(
+  ///   VideoSource.file('/path/to/video.mp4'),
+  ///   maxWidth: 320,
+  ///   maxHeight: 180,
+  /// );
+  /// if (thumbnail != null) {
+  ///   Image.memory(thumbnail);
+  /// }
+  /// ```
+  Future<Uint8List?> extractThumbnail(
+    VideoSource source, {
+    Duration position = Duration.zero,
+    int? maxWidth,
+    int? maxHeight,
+    int? quality,
+  }) async {
+    // First try embedded artwork
+    final artwork = await extractEmbeddedArtwork(source);
+    if (artwork != null) {
+      return artwork;
+    }
+
+    // Fall back to frame extraction
+    return extractVideoFrame(source, position: position, maxWidth: maxWidth, maxHeight: maxHeight, quality: quality);
   }
 
   // ==================== Casting ====================

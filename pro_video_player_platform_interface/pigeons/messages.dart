@@ -910,6 +910,43 @@ abstract class ProVideoPlayerHostApi {
   /// a file contains unsupported codecs.
   @async
   List<String?> getSupportedCodecs();
+
+  // ==================== Metadata Extraction ====================
+
+  /// Extracts embedded artwork/thumbnail from video container metadata.
+  ///
+  /// Returns the image bytes (JPEG/PNG) if embedded artwork exists in the
+  /// video container, null otherwise. Does not decode video frames - only
+  /// reads pre-existing artwork stored in the container metadata.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getEmbeddedPicture()
+  /// - iOS/macOS: AVAsset.metadata with AVMetadataCommonKeyArtwork
+  /// - Web: Returns null (no API for this)
+  ///
+  /// Common sources of embedded artwork:
+  /// - iTunes movies (MP4/M4V with cover art)
+  /// - MKV files with cover attachments
+  /// - Music videos with album art
+  @async
+  Uint8List? extractEmbeddedArtwork(VideoSourceMessage source);
+
+  /// Extracts a video frame at the specified position as an image.
+  ///
+  /// Returns the image bytes (JPEG) of the video frame at [positionMs].
+  /// If [positionMs] is 0, extracts the first available frame.
+  ///
+  /// Platform implementations:
+  /// - Android: MediaMetadataRetriever.getFrameAtTime()
+  /// - iOS/macOS: AVAssetImageGenerator.generateCGImagesAsynchronously()
+  /// - Web: Draw video to canvas, export as JPEG
+  ///
+  /// Optional parameters:
+  /// - [maxWidth]: Maximum width of the output image (maintains aspect ratio)
+  /// - [maxHeight]: Maximum height of the output image (maintains aspect ratio)
+  /// - [quality]: JPEG quality (0-100, default 80)
+  @async
+  Uint8List? extractVideoFrame(VideoSourceMessage source, int positionMs, int? maxWidth, int? maxHeight, int? quality);
 }
 
 /// Playback state enumeration.
