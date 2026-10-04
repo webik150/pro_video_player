@@ -203,7 +203,7 @@ class MobileVideoControls extends StatelessWidget {
         child: Column(
           children: [
             // Top area with gradient (black at top fading to transparent)
-            Flexible(
+            Expanded(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

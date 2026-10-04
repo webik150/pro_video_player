@@ -129,6 +129,27 @@ void main() {
       );
     });
 
+    testWidgets('anchors the bottom controls to the available bounds', (
+      tester,
+    ) async {
+      final controller = ProVideoPlayerController();
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          SizedBox(
+            width: 640,
+            height: 360,
+            child: buildMobileControls(controller: controller),
+          ),
+        ),
+      );
+
+      expect(tester.getBottomRight(find.byType(BottomControlsBar)).dy, 360);
+    });
+
     group('basic rendering', () {
       testWidgets('renders with correct layout structure', (tester) async {
         final controller = ProVideoPlayerController();

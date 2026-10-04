@@ -1066,5 +1066,46 @@ void main() {
         },
       );
     });
+
+    group('directional focus navigation', () {
+      testWidgets(
+        'arrow up from the seek bar focuses a visible toolbar button when fullscreen is hidden',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
+
+          FocusNode? seekBarFocusNode;
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                controller: controller,
+                buttonsConfig: const ButtonsConfig(showFullscreenButton: false),
+                playerToolbarActions: const [PlayerToolbarAction.speed],
+                gestureConfig: const GestureConfig(enableGestures: false),
+                forceMobileLayout: true,
+                testIsPipAvailable: false,
+                testIsBackgroundPlaybackSupported: false,
+                testIsCastingSupported: false,
+                onSeekBarFocusNodeCreated: (node) => seekBarFocusNode = node,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          seekBarFocusNode!.requestFocus();
+          await tester.pump();
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+          await tester.pump();
+
+          final focusedContext = FocusManager.instance.primaryFocus!.context!;
+          expect(
+            focusedContext.findAncestorWidgetOfExactType<TextButton>()?.key,
+            const Key('toolbar_speed_button'),
+          );
+        },
+      );
+    });
   });
 }

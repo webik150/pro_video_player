@@ -293,6 +293,12 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
           _seekBarFocusNode.hasFocus) {
         if (_toolbarFocusNode.context != null &&
             _toolbarFocusNode.canRequestFocus) {
+          for (final descendant in _toolbarFocusNode.descendants) {
+            if (descendant.canRequestFocus) {
+              descendant.requestFocus();
+              return KeyEventResult.handled;
+            }
+          }
           _toolbarFocusNode.requestFocus();
         } else {
           FocusScope.of(node.context!).focusInDirection(TraversalDirection.up);

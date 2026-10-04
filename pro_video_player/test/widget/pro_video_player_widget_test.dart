@@ -24,25 +24,37 @@ void main() {
       final controller = ProVideoPlayerController();
 
       await tester.pumpWidget(
-        buildTestWidget(ProVideoPlayer(controller: controller, placeholder: const Text('Loading...'))),
+        buildTestWidget(
+          ProVideoPlayer(
+            controller: controller,
+            placeholder: const Text('Loading...'),
+          ),
+        ),
       );
 
       expect(find.text('Loading...'), findsOneWidget);
     });
 
-    testWidgets('shows CircularProgressIndicator when no placeholder and not initialized', (tester) async {
-      final controller = ProVideoPlayerController();
+    testWidgets(
+      'shows CircularProgressIndicator when no placeholder and not initialized',
+      (tester) async {
+        final controller = ProVideoPlayerController();
 
-      await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(ProVideoPlayer(controller: controller)),
+        );
 
-      // Should show loading indicator when not initialized
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    });
+        // Should show loading indicator when not initialized
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      },
+    );
 
     testWidgets('shows video view when initialized', (tester) async {
       await fixture.initializeController();
 
-      await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
+      await tester.pumpWidget(
+        buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+      );
 
       expect(find.byKey(const Key('video_view')), findsOneWidget);
     });
@@ -55,7 +67,10 @@ void main() {
           SizedBox(
             width: 400,
             height: 300,
-            child: ProVideoPlayer(controller: fixture.controller, aspectRatio: 4 / 3),
+            child: ProVideoPlayer(
+              controller: fixture.controller,
+              aspectRatio: 4 / 3,
+            ),
           ),
         ),
       );
@@ -64,11 +79,19 @@ void main() {
       expect(aspectRatio.aspectRatio, closeTo(4 / 3, 0.01));
     });
 
-    testWidgets('defaults to 16:9 aspect ratio when video has no size', (tester) async {
+    testWidgets('defaults to 16:9 aspect ratio when video has no size', (
+      tester,
+    ) async {
       await fixture.initializeController();
 
       await tester.pumpWidget(
-        buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
+        buildTestWidget(
+          SizedBox(
+            width: 400,
+            height: 300,
+            child: ProVideoPlayer(controller: fixture.controller),
+          ),
+        ),
       );
 
       final aspectRatio = tester.widget<AspectRatio>(find.byType(AspectRatio));
@@ -85,7 +108,13 @@ void main() {
       await tester.pump();
 
       await tester.pumpWidget(
-        buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
+        buildTestWidget(
+          SizedBox(
+            width: 400,
+            height: 300,
+            child: ProVideoPlayer(controller: fixture.controller),
+          ),
+        ),
       );
 
       final aspectRatio = tester.widget<AspectRatio>(find.byType(AspectRatio));
@@ -93,22 +122,70 @@ void main() {
       expect(aspectRatio.aspectRatio, closeTo(2.4, 0.01));
     });
 
+    testWidgets('fills FullHD landscape bounds when fillBounds is enabled', (
+      tester,
+    ) async {
+      await fixture.initializeController();
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        buildSizedTestWidget(
+          ProVideoPlayer(
+            controller: fixture.controller,
+            fillBounds: true,
+            controlsBuilder: (context, controller) => Positioned.fill(
+              child: VideoPlayerControls(
+                controller: controller,
+                forceMobileLayout: true,
+              ),
+            ),
+          ),
+          width: 1920,
+          height: 1080,
+        ),
+      );
+
+      expect(
+        tester.getSize(find.byKey(const Key('video_view'))),
+        const Size(1920, 1080),
+      );
+      expect(
+        tester.getSize(find.byType(VideoPlayerControls)),
+        const Size(1920, 1080),
+      );
+    });
+
     group('controlsMode', () {
-      testWidgets('defaults to ControlsMode.flutter (shows VideoPlayerControls)', (tester) async {
-        await fixture.initializeController();
+      testWidgets(
+        'defaults to ControlsMode.flutter (shows VideoPlayerControls)',
+        (tester) async {
+          await fixture.initializeController();
 
-        await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
+          await tester.pumpWidget(
+            buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+          );
 
-        // Default is flutter mode, which uses ControlsMode.none for native and overlays Flutter controls
-        verify(() => fixture.mockPlatform.buildView(1)).called(1);
-        expect(find.byType(VideoPlayerControls), findsOneWidget);
-      });
+          // Default is flutter mode, which uses ControlsMode.none for native and overlays Flutter controls
+          verify(() => fixture.mockPlatform.buildView(1)).called(1);
+          expect(find.byType(VideoPlayerControls), findsOneWidget);
+        },
+      );
 
-      testWidgets('ControlsMode.none shows video only without controls', (tester) async {
+      testWidgets('ControlsMode.none shows video only without controls', (
+        tester,
+      ) async {
         await fixture.initializeController();
 
         await tester.pumpWidget(
-          buildTestWidget(ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none)),
+          buildTestWidget(
+            ProVideoPlayer(
+              controller: fixture.controller,
+              controlsMode: ControlsMode.none,
+            ),
+          ),
         );
 
         verify(() => fixture.mockPlatform.buildView(1)).called(1);
@@ -119,77 +196,133 @@ void main() {
         await fixture.initializeController();
 
         await tester.pumpWidget(
-          buildTestWidget(ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native)),
+          buildTestWidget(
+            ProVideoPlayer(
+              controller: fixture.controller,
+              controlsMode: ControlsMode.native,
+            ),
+          ),
         );
 
-        verify(() => fixture.mockPlatform.buildView(1, controlsMode: ControlsMode.native)).called(1);
+        verify(
+          () => fixture.mockPlatform.buildView(
+            1,
+            controlsMode: ControlsMode.native,
+          ),
+        ).called(1);
       });
     });
 
     group('didUpdateWidget', () {
-      testWidgets('notifies native when changing from flutter to native mode', (tester) async {
+      testWidgets('notifies native when changing from flutter to native mode', (
+        tester,
+      ) async {
         await fixture.initializeController();
-        when(() => fixture.mockPlatform.setControlsMode(any(), any())).thenAnswer((_) async {});
+        when(
+          () => fixture.mockPlatform.setControlsMode(any(), any()),
+        ).thenAnswer((_) async {});
 
-        await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
+        await tester.pumpWidget(
+          buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+        );
 
         // Change to native controls
-        await tester.pumpWidget(
-          buildTestWidget(ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native)),
-        );
-
-        verify(() => fixture.mockPlatform.setControlsMode(1, ControlsMode.native)).called(1);
-      });
-
-      testWidgets('notifies native when changing from native to flutter mode', (tester) async {
-        await fixture.initializeController();
-        when(() => fixture.mockPlatform.setControlsMode(any(), any())).thenAnswer((_) async {});
-
-        await tester.pumpWidget(
-          buildTestWidget(ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native)),
-        );
-
-        // Change to flutter controls
-        await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
-
-        verify(() => fixture.mockPlatform.setControlsMode(1, ControlsMode.none)).called(1);
-      });
-
-      testWidgets('does not notify native when mode stays the same', (tester) async {
-        await fixture.initializeController();
-        when(() => fixture.mockPlatform.setControlsMode(any(), any())).thenAnswer((_) async {});
-
-        await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
-
-        // Rebuild with same mode
-        await tester.pumpWidget(buildTestWidget(ProVideoPlayer(controller: fixture.controller)));
-
-        verifyNever(() => fixture.mockPlatform.setControlsMode(any(), any()));
-      });
-
-      testWidgets('notifies when adding controlsBuilder changes effective mode', (tester) async {
-        await fixture.initializeController();
-        when(() => fixture.mockPlatform.setControlsMode(any(), any())).thenAnswer((_) async {});
-
-        // Start with native mode
-        await tester.pumpWidget(
-          buildTestWidget(ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native)),
-        );
-
-        // Add controlsBuilder (which overrides to none for native)
         await tester.pumpWidget(
           buildTestWidget(
             ProVideoPlayer(
               controller: fixture.controller,
               controlsMode: ControlsMode.native,
-              controlsBuilder: (ctx, ctrl) => const SizedBox(),
             ),
           ),
         );
 
-        // Should notify change from native to none
-        verify(() => fixture.mockPlatform.setControlsMode(1, ControlsMode.none)).called(1);
+        verify(
+          () => fixture.mockPlatform.setControlsMode(1, ControlsMode.native),
+        ).called(1);
       });
+
+      testWidgets('notifies native when changing from native to flutter mode', (
+        tester,
+      ) async {
+        await fixture.initializeController();
+        when(
+          () => fixture.mockPlatform.setControlsMode(any(), any()),
+        ).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            ProVideoPlayer(
+              controller: fixture.controller,
+              controlsMode: ControlsMode.native,
+            ),
+          ),
+        );
+
+        // Change to flutter controls
+        await tester.pumpWidget(
+          buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+        );
+
+        verify(
+          () => fixture.mockPlatform.setControlsMode(1, ControlsMode.none),
+        ).called(1);
+      });
+
+      testWidgets('does not notify native when mode stays the same', (
+        tester,
+      ) async {
+        await fixture.initializeController();
+        when(
+          () => fixture.mockPlatform.setControlsMode(any(), any()),
+        ).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+        );
+
+        // Rebuild with same mode
+        await tester.pumpWidget(
+          buildTestWidget(ProVideoPlayer(controller: fixture.controller)),
+        );
+
+        verifyNever(() => fixture.mockPlatform.setControlsMode(any(), any()));
+      });
+
+      testWidgets(
+        'notifies when adding controlsBuilder changes effective mode',
+        (tester) async {
+          await fixture.initializeController();
+          when(
+            () => fixture.mockPlatform.setControlsMode(any(), any()),
+          ).thenAnswer((_) async {});
+
+          // Start with native mode
+          await tester.pumpWidget(
+            buildTestWidget(
+              ProVideoPlayer(
+                controller: fixture.controller,
+                controlsMode: ControlsMode.native,
+              ),
+            ),
+          );
+
+          // Add controlsBuilder (which overrides to none for native)
+          await tester.pumpWidget(
+            buildTestWidget(
+              ProVideoPlayer(
+                controller: fixture.controller,
+                controlsMode: ControlsMode.native,
+                controlsBuilder: (ctx, ctrl) => const SizedBox(),
+              ),
+            ),
+          );
+
+          // Should notify change from native to none
+          verify(
+            () => fixture.mockPlatform.setControlsMode(1, ControlsMode.none),
+          ).called(1);
+        },
+      );
     });
 
     group('controlsBuilder', () {
@@ -228,7 +361,9 @@ void main() {
         expect(receivedController, equals(fixture.controller));
       });
 
-      testWidgets('controlsBuilder takes precedence over controlsMode', (tester) async {
+      testWidgets('controlsBuilder takes precedence over controlsMode', (
+        tester,
+      ) async {
         await fixture.initializeController();
 
         await tester.pumpWidget(
@@ -277,24 +412,42 @@ void main() {
     });
 
     group('SubtitleOverlay positioning', () {
-      testWidgets('renders subtitles with Flutter rendering mode', (tester) async {
+      testWidgets('renders subtitles with Flutter rendering mode', (
+        tester,
+      ) async {
         // Initialize with Flutter subtitle rendering mode enabled
         await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+          options: const VideoPlayerOptions(
+            subtitleRenderMode: SubtitleRenderMode.flutter,
+          ),
         );
 
         // Use default controls mode (flutter) - VideoPlayerControls handles subtitles
         await tester.pumpWidget(
-          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
+          buildTestWidget(
+            SizedBox(
+              width: 400,
+              height: 300,
+              child: ProVideoPlayer(controller: fixture.controller),
+            ),
+          ),
         );
 
         // Emit subtitle track and cue events
-        const track = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
+        const track = SubtitleTrack(
+          id: '0:1',
+          label: 'English',
+          language: 'en',
+        );
         fixture
           ..emitEvent(const SelectedSubtitleChangedEvent(track))
           ..emitEvent(
             const EmbeddedSubtitleCueEvent(
-              cue: SubtitleCue(text: 'Test subtitle', start: Duration.zero, end: Duration(seconds: 5)),
+              cue: SubtitleCue(
+                text: 'Test subtitle',
+                start: Duration.zero,
+                end: Duration(seconds: 5),
+              ),
             ),
           );
 
@@ -306,56 +459,88 @@ void main() {
         expect(find.text('Test subtitle'), findsOneWidget);
       });
 
-      testWidgets('renders subtitles with native controls and Flutter subtitle rendering', (tester) async {
-        // Initialize with Flutter subtitle rendering mode
+      testWidgets(
+        'renders subtitles with native controls and Flutter subtitle rendering',
+        (tester) async {
+          // Initialize with Flutter subtitle rendering mode
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
+            ),
+          );
+
+          // Test with ControlsMode.native - Flutter renders subtitles over native controls
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: ProVideoPlayer(
+                  controller: fixture.controller,
+                  controlsMode: ControlsMode.native,
+                ),
+              ),
+            ),
+          );
+
+          const track = SubtitleTrack(
+            id: '0:1',
+            label: 'English',
+            language: 'en',
+          );
+          fixture
+            ..emitEvent(const SelectedSubtitleChangedEvent(track))
+            ..emitEvent(
+              const EmbeddedSubtitleCueEvent(
+                cue: SubtitleCue(
+                  text: 'Test subtitle',
+                  start: Duration.zero,
+                  end: Duration(seconds: 5),
+                ),
+              ),
+            );
+
+          await tester.pump();
+
+          // Subtitle should be visible
+          expect(find.byType(SubtitleOverlay), findsOneWidget);
+          expect(find.text('Test subtitle'), findsOneWidget);
+        },
+      );
+
+      testWidgets('updates subtitle cue dynamically', (tester) async {
         await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+          options: const VideoPlayerOptions(
+            subtitleRenderMode: SubtitleRenderMode.flutter,
+          ),
         );
 
-        // Test with ControlsMode.native - Flutter renders subtitles over native controls
+        // Use default controls mode (flutter) - VideoPlayerControls handles subtitles
         await tester.pumpWidget(
           buildTestWidget(
             SizedBox(
               width: 400,
               height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native),
+              child: ProVideoPlayer(controller: fixture.controller),
             ),
           ),
         );
 
-        const track = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
-        fixture
-          ..emitEvent(const SelectedSubtitleChangedEvent(track))
-          ..emitEvent(
-            const EmbeddedSubtitleCueEvent(
-              cue: SubtitleCue(text: 'Test subtitle', start: Duration.zero, end: Duration(seconds: 5)),
-            ),
-          );
-
-        await tester.pump();
-
-        // Subtitle should be visible
-        expect(find.byType(SubtitleOverlay), findsOneWidget);
-        expect(find.text('Test subtitle'), findsOneWidget);
-      });
-
-      testWidgets('updates subtitle cue dynamically', (tester) async {
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
-        );
-
-        // Use default controls mode (flutter) - VideoPlayerControls handles subtitles
-        await tester.pumpWidget(
-          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
-        );
-
         // Emit first cue
-        const track = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
+        const track = SubtitleTrack(
+          id: '0:1',
+          label: 'English',
+          language: 'en',
+        );
         fixture
           ..emitEvent(const SelectedSubtitleChangedEvent(track))
           ..emitEvent(
             const EmbeddedSubtitleCueEvent(
-              cue: SubtitleCue(text: 'First cue', start: Duration.zero, end: Duration(seconds: 5)),
+              cue: SubtitleCue(
+                text: 'First cue',
+                start: Duration.zero,
+                end: Duration(seconds: 5),
+              ),
             ),
           );
 
@@ -366,7 +551,11 @@ void main() {
         // Change to second cue
         fixture.emitEvent(
           const EmbeddedSubtitleCueEvent(
-            cue: SubtitleCue(text: 'Second cue', start: Duration(seconds: 5), end: Duration(seconds: 10)),
+            cue: SubtitleCue(
+              text: 'Second cue',
+              start: Duration(seconds: 5),
+              end: Duration(seconds: 10),
+            ),
           ),
         );
 
@@ -380,100 +569,165 @@ void main() {
     });
 
     group('no duplicate SubtitleOverlay widgets', () {
-      testWidgets('ControlsMode.none with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
-        );
-
-        await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 400,
-              height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
+      testWidgets(
+        'ControlsMode.none with Flutter subtitle mode has exactly one SubtitleOverlay',
+        (tester) async {
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
             ),
-          ),
-        );
+          );
 
-        // ControlsMode.none should NOT add SubtitleOverlay - expected to be paired with
-        // external VideoPlayerControls that handles subtitles internally
-        expect(find.byType(SubtitleOverlay), findsNothing);
-      });
-
-      testWidgets('ControlsMode.flutter with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
-        );
-
-        await tester.pumpWidget(
-          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
-        );
-
-        // VideoPlayerControls handles subtitles internally - should have exactly one
-        expect(find.byType(SubtitleOverlay), findsOneWidget);
-      });
-
-      testWidgets('custom controlsBuilder with VideoPlayerControls has exactly one SubtitleOverlay', (tester) async {
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
-        );
-
-        await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 400,
-              height: 300,
-              child: ProVideoPlayer(
-                controller: fixture.controller,
-                controlsBuilder: (context, ctrl) => VideoPlayerControls(
-                  controller: ctrl,
-                  forceMobileLayout: true, // Avoid desktop-specific gesture wrappers in tests
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: ProVideoPlayer(
+                  controller: fixture.controller,
+                  controlsMode: ControlsMode.none,
                 ),
               ),
             ),
-          ),
-        );
+          );
 
-        // When using custom controlsBuilder with VideoPlayerControls, the custom
-        // VideoPlayerControls handles subtitles internally - should have exactly one
-        expect(find.byType(SubtitleOverlay), findsOneWidget);
-      });
+          // ControlsMode.none should NOT add SubtitleOverlay - expected to be paired with
+          // external VideoPlayerControls that handles subtitles internally
+          expect(find.byType(SubtitleOverlay), findsNothing);
+        },
+      );
 
-      testWidgets('ControlsMode.none + separate VideoPlayerControls has exactly one SubtitleOverlay', (tester) async {
-        // This pattern is used in FullscreenVideoPage
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
-        );
+      testWidgets(
+        'ControlsMode.flutter with Flutter subtitle mode has exactly one SubtitleOverlay',
+        (tester) async {
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
+            ),
+          );
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 400,
-              height: 300,
-              child: Stack(
-                children: [
-                  // Video player with no controls (like FullscreenVideoPage)
-                  ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.none),
-                  // Separate controls overlay (like FullscreenVideoPage)
-                  VideoPlayerControls(
-                    controller: fixture.controller,
-                    forceMobileLayout: true, // Avoid desktop-specific gesture wrappers in tests
-                  ),
-                ],
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: ProVideoPlayer(controller: fixture.controller),
               ),
             ),
-          ),
-        );
+          );
 
-        // ProVideoPlayer(ControlsMode.none) should NOT add SubtitleOverlay
-        // VideoPlayerControls adds SubtitleOverlay internally
-        // Result: exactly one SubtitleOverlay
-        expect(find.byType(SubtitleOverlay), findsOneWidget);
-      });
+          // VideoPlayerControls handles subtitles internally - should have exactly one
+          expect(find.byType(SubtitleOverlay), findsOneWidget);
+        },
+      );
 
-      testWidgets('ControlsMode.native with Flutter subtitle mode has exactly one SubtitleOverlay', (tester) async {
+      testWidgets(
+        'custom controlsBuilder with VideoPlayerControls has exactly one SubtitleOverlay',
+        (tester) async {
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
+            ),
+          );
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: ProVideoPlayer(
+                  controller: fixture.controller,
+                  controlsBuilder: (context, ctrl) => VideoPlayerControls(
+                    controller: ctrl,
+                    forceMobileLayout:
+                        true, // Avoid desktop-specific gesture wrappers in tests
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          // When using custom controlsBuilder with VideoPlayerControls, the custom
+          // VideoPlayerControls handles subtitles internally - should have exactly one
+          expect(find.byType(SubtitleOverlay), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'ControlsMode.none + separate VideoPlayerControls has exactly one SubtitleOverlay',
+        (tester) async {
+          // This pattern is used in FullscreenVideoPage
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
+            ),
+          );
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: Stack(
+                  children: [
+                    // Video player with no controls (like FullscreenVideoPage)
+                    ProVideoPlayer(
+                      controller: fixture.controller,
+                      controlsMode: ControlsMode.none,
+                    ),
+                    // Separate controls overlay (like FullscreenVideoPage)
+                    VideoPlayerControls(
+                      controller: fixture.controller,
+                      forceMobileLayout:
+                          true, // Avoid desktop-specific gesture wrappers in tests
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          // ProVideoPlayer(ControlsMode.none) should NOT add SubtitleOverlay
+          // VideoPlayerControls adds SubtitleOverlay internally
+          // Result: exactly one SubtitleOverlay
+          expect(find.byType(SubtitleOverlay), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'ControlsMode.native with Flutter subtitle mode has exactly one SubtitleOverlay',
+        (tester) async {
+          await fixture.initializeController(
+            options: const VideoPlayerOptions(
+              subtitleRenderMode: SubtitleRenderMode.flutter,
+            ),
+          );
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 400,
+                height: 300,
+                child: ProVideoPlayer(
+                  controller: fixture.controller,
+                  controlsMode: ControlsMode.native,
+                ),
+              ),
+            ),
+          );
+
+          // Native controls mode with Flutter subtitle rendering should add exactly one SubtitleOverlay
+          expect(find.byType(SubtitleOverlay), findsOneWidget);
+        },
+      );
+
+      testWidgets('no SubtitleOverlay when using native subtitle render mode', (
+        tester,
+      ) async {
         await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.flutter),
+          options: const VideoPlayerOptions(
+            subtitleRenderMode: SubtitleRenderMode.native,
+          ),
         );
 
         await tester.pumpWidget(
@@ -481,22 +735,9 @@ void main() {
             SizedBox(
               width: 400,
               height: 300,
-              child: ProVideoPlayer(controller: fixture.controller, controlsMode: ControlsMode.native),
+              child: ProVideoPlayer(controller: fixture.controller),
             ),
           ),
-        );
-
-        // Native controls mode with Flutter subtitle rendering should add exactly one SubtitleOverlay
-        expect(find.byType(SubtitleOverlay), findsOneWidget);
-      });
-
-      testWidgets('no SubtitleOverlay when using native subtitle render mode', (tester) async {
-        await fixture.initializeController(
-          options: const VideoPlayerOptions(subtitleRenderMode: SubtitleRenderMode.native),
-        );
-
-        await tester.pumpWidget(
-          buildTestWidget(SizedBox(width: 400, height: 300, child: ProVideoPlayer(controller: fixture.controller))),
         );
 
         // Native subtitle mode: VideoPlayerControls still adds SubtitleOverlay but
@@ -506,12 +747,20 @@ void main() {
         expect(overlayFinder, findsOneWidget);
 
         // Verify no subtitle text is shown (native handles rendering)
-        const track = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
+        const track = SubtitleTrack(
+          id: '0:1',
+          label: 'English',
+          language: 'en',
+        );
         fixture
           ..emitEvent(const SelectedSubtitleChangedEvent(track))
           ..emitEvent(
             const EmbeddedSubtitleCueEvent(
-              cue: SubtitleCue(text: 'Test subtitle', start: Duration.zero, end: Duration(seconds: 5)),
+              cue: SubtitleCue(
+                text: 'Test subtitle',
+                start: Duration.zero,
+                end: Duration(seconds: 5),
+              ),
             ),
           );
         await tester.pump();

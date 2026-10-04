@@ -11,7 +11,8 @@ import 'video_player_controls.dart';
 ///
 /// The [context] is the build context and [controller] is the video player
 /// controller that can be used to control playback.
-typedef VideoPlayerControlsBuilder = Widget Function(BuildContext context, ProVideoPlayerController controller);
+typedef VideoPlayerControlsBuilder =
+    Widget Function(BuildContext context, ProVideoPlayerController controller);
 
 /// A widget that displays a video player.
 ///
@@ -76,6 +77,7 @@ class ProVideoPlayer extends StatefulWidget {
     required this.controller,
     super.key,
     this.aspectRatio,
+    this.fillBounds = false,
     this.placeholder,
     this.controlsMode = ControlsMode.flutter,
     this.controlsBuilder,
@@ -90,6 +92,12 @@ class ProVideoPlayer extends StatefulWidget {
   /// If null, uses the video's natural aspect ratio when available,
   /// otherwise defaults to 16:9.
   final double? aspectRatio;
+
+  /// Whether to fill the available bounds instead of constraining the player
+  /// to its aspect ratio.
+  ///
+  /// Defaults to `false`, preserving the video's aspect ratio.
+  final bool fillBounds;
 
   /// A widget to display while the video is loading or if there's an error.
   final Widget? placeholder;
@@ -147,7 +155,9 @@ class ProVideoPlayer extends StatefulWidget {
 class _ProVideoPlayerState extends State<ProVideoPlayer> {
   /// Computes the effective native controls mode for the platform view.
   ControlsMode get _effectiveNativeControlsMode {
-    final useNativeControls = widget.controlsMode == ControlsMode.native && widget.controlsBuilder == null;
+    final useNativeControls =
+        widget.controlsMode == ControlsMode.native &&
+        widget.controlsBuilder == null;
     return useNativeControls ? ControlsMode.native : ControlsMode.none;
   }
 
@@ -156,37 +166,55 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
     super.didUpdateWidget(oldWidget);
 
     // When controls mode changes, notify native to update the view
-    final oldNativeMode = oldWidget.controlsMode == ControlsMode.native && oldWidget.controlsBuilder == null
+    final oldNativeMode =
+        oldWidget.controlsMode == ControlsMode.native &&
+            oldWidget.controlsBuilder == null
         ? ControlsMode.native
         : ControlsMode.none;
     final newNativeMode = _effectiveNativeControlsMode;
 
     if (oldNativeMode != newNativeMode && widget.controller.playerId != null) {
-      unawaited(ProVideoPlayerPlatform.instance.setControlsMode(widget.controller.playerId!, newNativeMode));
+      unawaited(
+        ProVideoPlayerPlatform.instance.setControlsMode(
+          widget.controller.playerId!,
+          newNativeMode,
+        ),
+      );
     }
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
+  Widget build(
+    BuildContext context,
+  ) => ValueListenableBuilder<VideoPlayerValue>(
     valueListenable: widget.controller,
     builder: (context, value, child) {
       if (!widget.controller.isInitialized) {
         // Show loading indicator by default while player initializes
-        return widget.placeholder ??
-            AspectRatio(
-              aspectRatio: widget.aspectRatio ?? 16 / 9,
-              child: const ColoredBox(
-                color: Colors.black,
-                child: Center(child: CircularProgressIndicator()),
-              ),
+        final placeholder =
+            widget.placeholder ??
+            const ColoredBox(
+              color: Colors.black,
+              child: Center(child: CircularProgressIndicator()),
             );
+        return widget.fillBounds
+            ? SizedBox.expand(child: placeholder)
+            : AspectRatio(
+                aspectRatio: widget.aspectRatio ?? 16 / 9,
+                child: placeholder,
+              );
       }
 
       // Use widget aspectRatio if provided, otherwise use video aspectRatio (fallback to 16:9 if unknown)
-      final calculatedAspectRatio = value.aspectRatio != 0.0 ? value.aspectRatio : 16 / 9;
+      final calculatedAspectRatio = value.aspectRatio != 0.0
+          ? value.aspectRatio
+          : 16 / 9;
       final videoAspectRatio = widget.aspectRatio ?? calculatedAspectRatio;
 
-      return AspectRatio(aspectRatio: videoAspectRatio, child: _buildVideoView(context));
+      final videoView = _buildVideoView(context);
+      return widget.fillBounds
+          ? SizedBox.expand(child: videoView)
+          : AspectRatio(aspectRatio: videoAspectRatio, child: videoView);
     },
   );
 
@@ -200,7 +228,10 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
     // - native mode: use native controls
     // - flutter/none/custom: no native controls (we overlay Flutter controls or nothing)
     final nativeControlsMode = _effectiveNativeControlsMode;
-    final videoView = ProVideoPlayerPlatform.instance.buildView(playerId, controlsMode: nativeControlsMode);
+    final videoView = ProVideoPlayerPlatform.instance.buildView(
+      playerId,
+      controlsMode: nativeControlsMode,
+    );
 
     // Determine if we should show Flutter subtitle overlay
     final shouldShowSubtitleOverlay = _shouldShowFlutterSubtitles();
@@ -211,7 +242,10 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
         return Stack(
           children: [
             videoView,
-            SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
+            SubtitleOverlay(
+              controller: widget.controller,
+              style: widget.subtitleStyle,
+            ),
           ],
         );
       }
@@ -223,7 +257,8 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
     // alongside a separate VideoPlayerControls widget that handles subtitles.
     // Adding one here would cause duplicates. Users who want subtitles without
     // controls can add SubtitleOverlay manually or use a custom controlsBuilder.
-    if (widget.controlsMode == ControlsMode.none && widget.controlsBuilder == null) {
+    if (widget.controlsMode == ControlsMode.none &&
+        widget.controlsBuilder == null) {
       return videoView;
     }
 
@@ -240,14 +275,20 @@ class _ProVideoPlayerState extends State<ProVideoPlayer> {
     // When using a custom builder, don't add SubtitleOverlay here - the custom
     // builder is responsible for subtitles (e.g., via VideoPlayerControls with
     // its own SubtitleOverlay). Adding one here would cause duplicates.
-    final showOverlayAtThisLevel = shouldShowSubtitleOverlay && !hasCustomBuilder;
+    final showOverlayAtThisLevel =
+        shouldShowSubtitleOverlay && !hasCustomBuilder;
 
     return KeyedSubtree(
       key: ValueKey(playerId),
       child: Stack(
+        fit: StackFit.expand,
         children: [
           videoView,
-          if (showOverlayAtThisLevel) SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
+          if (showOverlayAtThisLevel)
+            SubtitleOverlay(
+              controller: widget.controller,
+              style: widget.subtitleStyle,
+            ),
           controls,
         ],
       ),

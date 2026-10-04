@@ -158,54 +158,57 @@ class PlayerToolbar extends StatelessWidget {
   static const double _actionButtonWidth = 48;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: theme.controlsPadding,
-    child: LayoutBuilder(
-      builder: (ctx, constraints) => ValueListenableBuilder<VideoPlayerValue>(
-        valueListenable: controller,
-        builder: (ctx, value, child) {
-          final actions = _getVisibleActions(value);
+  Widget build(BuildContext context) => Focus(
+    focusNode: focusNode,
+    child: Container(
+      padding: theme.controlsPadding,
+      child: LayoutBuilder(
+        builder: (ctx, constraints) => ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: controller,
+          builder: (ctx, value, child) {
+            final actions = _getVisibleActions(value);
 
-          // Calculate how many actions can fit
-          final (visibleActions, overflowActions) = _calculateToolbarActions(
-            actions: actions,
-            availableWidth: constraints.maxWidth,
-            hasTitle: value.title != null,
-          );
+            // Calculate how many actions can fit
+            final (visibleActions, overflowActions) = _calculateToolbarActions(
+              actions: actions,
+              availableWidth: constraints.maxWidth,
+              hasTitle: value.title != null,
+            );
 
-          final showDismissButton =
-              controller.options.fullscreenOnly && onDismiss != null;
+            final showDismissButton =
+                controller.options.fullscreenOnly && onDismiss != null;
 
-          return Row(
-            children: [
-              // Dismiss button for fullscreenOnly mode
-              if (showDismissButton)
-                IconButton(
-                  icon: Icon(Icons.close, color: theme.primaryColor),
-                  tooltip: 'Close',
-                  onPressed: onDismiss,
-                ),
-              if (value.title != null)
-                Expanded(
-                  child: Text(
-                    value.title!,
-                    style: TextStyle(
-                      color: theme.primaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+            return Row(
+              children: [
+                // Dismiss button for fullscreenOnly mode
+                if (showDismissButton)
+                  IconButton(
+                    icon: Icon(Icons.close, color: theme.primaryColor),
+                    tooltip: 'Close',
+                    onPressed: onDismiss,
                   ),
+                if (value.title != null)
+                  Expanded(
+                    child: Text(
+                      value.title!,
+                      style: TextStyle(
+                        color: theme.primaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (value.title == null) const Spacer(),
+                ...visibleActions.map(
+                  (action) => _buildActionWidget(action, value, theme, ctx),
                 ),
-              if (value.title == null) const Spacer(),
-              ...visibleActions.map(
-                (action) => _buildActionWidget(action, value, theme, ctx),
-              ),
-              if (overflowActions.isNotEmpty)
-                _buildOverflowMenu(overflowActions, value, theme, ctx),
-            ],
-          );
-        },
+                if (overflowActions.isNotEmpty)
+                  _buildOverflowMenu(overflowActions, value, theme, ctx),
+              ],
+            );
+          },
+        ),
       ),
     ),
   );
@@ -476,7 +479,6 @@ class PlayerToolbar extends StatelessWidget {
           isFullscreen: isFullscreen,
           onEnter: onFullscreenEnter,
           onExit: onFullscreenExit,
-          focusNode: focusNode,
         );
     }
   }

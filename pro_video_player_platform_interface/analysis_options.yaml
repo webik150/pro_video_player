@@ -5,3 +5,4 @@ analyzer:
   exclude:
     # Pigeon configuration file requires pigeon dev dependency
     - pigeons/**
+    - build/**
