@@ -29,6 +29,7 @@ class FullscreenButton extends StatelessWidget {
     required this.isFullscreen,
     required this.onEnter,
     required this.onExit,
+    this.focusNode,
     super.key,
   });
 
@@ -44,8 +45,12 @@ class FullscreenButton extends StatelessWidget {
   /// Called when the button is tapped to exit fullscreen.
   final VoidCallback onExit;
 
+  /// Optional focus node for directional TV-remote navigation.
+  final FocusNode? focusNode;
+
   @override
   Widget build(BuildContext context) => IconButton(
+    focusNode: focusNode,
     icon: Icon(isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen),
     color: theme.primaryColor,
     iconSize: theme.iconSize,

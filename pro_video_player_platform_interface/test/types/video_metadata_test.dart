@@ -434,10 +434,10 @@ void main() {
 
     group('subtitle tracks', () {
       test('creates with subtitle tracks', () {
-        final metadata = VideoMetadata(
+        const metadata = VideoMetadata(
           subtitleTracks: [
-            const SubtitleTrack(id: '1', label: 'English', language: 'en'),
-            const SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
+            SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
           ],
         );
 
@@ -447,8 +447,8 @@ void main() {
       });
 
       test('hasSubtitles returns true when tracks exist', () {
-        final metadata = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+        const metadata = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
         );
 
         expect(metadata.hasSubtitles, isTrue);
@@ -460,10 +460,10 @@ void main() {
       });
 
       test('subtitleTrackCount returns correct count', () {
-        final metadata = VideoMetadata(
+        const metadata = VideoMetadata(
           subtitleTracks: [
-            const SubtitleTrack(id: '1', label: 'English', language: 'en'),
-            const SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
+            SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
           ],
         );
 
@@ -476,16 +476,16 @@ void main() {
       });
 
       test('isEmpty includes subtitle tracks', () {
-        final metadata = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+        const metadata = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
         );
 
         expect(metadata.isEmpty, isFalse);
       });
 
       test('copyWith preserves subtitle tracks', () {
-        final original = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+        const original = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
         );
         final updated = original.copyWith(title: 'Added Title');
 
@@ -494,14 +494,14 @@ void main() {
       });
 
       test('equality includes subtitle tracks', () {
-        final metadata1 = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+        const metadata1 = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
         );
-        final metadata2 = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+        const metadata2 = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
         );
-        final metadata3 = VideoMetadata(
-          subtitleTracks: [const SubtitleTrack(id: '2', label: 'Spanish', language: 'es')],
+        const metadata3 = VideoMetadata(
+          subtitleTracks: [SubtitleTrack(id: '2', label: 'Spanish', language: 'es')],
         );
 
         expect(metadata1, equals(metadata2));
@@ -509,10 +509,10 @@ void main() {
       });
 
       test('toString includes subtitle track count', () {
-        final metadata = VideoMetadata(
+        const metadata = VideoMetadata(
           subtitleTracks: [
-            const SubtitleTrack(id: '1', label: 'English', language: 'en'),
-            const SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
+            SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
           ],
         );
 
@@ -568,12 +568,12 @@ void main() {
 
     group('combined metadata', () {
       test('creates with all field types', () {
-        final metadata = VideoMetadata(
+        const metadata = VideoMetadata(
           // Technical
           width: 1920,
           height: 1080,
           videoCodec: 'h264',
-          duration: const Duration(minutes: 90),
+          duration: Duration(minutes: 90),
           // Descriptive
           title: 'Epic Movie',
           artist: 'Famous Director',
@@ -581,7 +581,7 @@ void main() {
           year: 2024,
           genre: 'Sci-Fi',
           // Tracks
-          subtitleTracks: [const SubtitleTrack(id: '1', label: 'English', language: 'en')],
+          subtitleTracks: [SubtitleTrack(id: '1', label: 'English', language: 'en')],
           audioTrackCount: 2,
         );
 

@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pro_video_player/pro_video_player.dart';
@@ -25,7 +25,8 @@ void main() {
       await tester.pumpWidget(
         ProVideoPlayerBuilder(
           controller: fixture.controller,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
+          builder: (context, controller, child) =>
+              const Text('Normal View', textDirection: TextDirection.ltr),
         ),
       );
 
@@ -67,11 +68,14 @@ void main() {
       expect(find.text('Child'), findsOneWidget);
     });
 
-    testWidgets('uses fullscreenBuilder when isFullscreen is true', (tester) async {
+    testWidgets('uses fullscreenBuilder when isFullscreen is true', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         ProVideoPlayerBuilder(
           controller: fixture.controller,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
+          builder: (context, controller, child) =>
+              const Text('Normal View', textDirection: TextDirection.ltr),
           fullscreenBuilder: (context, controller, child) =>
               const Text('Fullscreen View', textDirection: TextDirection.ltr),
         ),
@@ -81,51 +85,106 @@ void main() {
       expect(find.text('Fullscreen View'), findsNothing);
 
       // Trigger fullscreen state change
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+      fixture.eventController.add(
+        const FullscreenStateChangedEvent(isFullscreen: true),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Normal View'), findsNothing);
       expect(find.text('Fullscreen View'), findsOneWidget);
     });
 
-    testWidgets('uses default fullscreen when fullscreenBuilder is null and useDefaultFullscreen is true', (
+    testWidgets(
+      'uses default fullscreen when fullscreenBuilder is null and useDefaultFullscreen is true',
+      (tester) async {
+        when(
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
+        ).thenReturn(
+          const Text('Video View', textDirection: TextDirection.ltr),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            ProVideoPlayerBuilder(
+              controller: fixture.controller,
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
+              // No fullscreenBuilder provided, useDefaultFullscreen defaults to true
+            ),
+          ),
+        );
+
+        // Trigger fullscreen state change
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
+        await tester.pumpAndSettle();
+
+        // Should show default fullscreen view (with video player)
+        expect(find.text('Normal View'), findsNothing);
+        expect(find.byType(ProVideoPlayer), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'fullscreen controls fill the screen independently of the video aspect ratio',
+      (tester) async {
+        const controlsKey = ValueKey('fullscreen-controls');
+        when(
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
+        ).thenReturn(
+          const Text('Video View', textDirection: TextDirection.ltr),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            ProVideoPlayerBuilder(
+              controller: fixture.controller,
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
+              controlsBuilder: (context, controller) =>
+                  const SizedBox.expand(key: controlsKey),
+            ),
+          ),
+        );
+
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
+        await tester.pumpAndSettle();
+
+        final screenSize = tester.getSize(find.byType(Scaffold).first);
+        expect(tester.getSize(find.byKey(controlsKey)), screenSize);
+        expect(
+          tester.getSize(find.byType(ProVideoPlayer).last).height,
+          lessThan(screenSize.height),
+        );
+      },
+    );
+
+    testWidgets('uses normal builder when useDefaultFullscreen is false', (
       tester,
     ) async {
-      when(
-        () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
-      ).thenReturn(const Text('Video View', textDirection: TextDirection.ltr));
-
-      await tester.pumpWidget(
-        buildTestWidget(
-          ProVideoPlayerBuilder(
-            controller: fixture.controller,
-            builder: (context, controller, child) => const Text('Normal View'),
-            // No fullscreenBuilder provided, useDefaultFullscreen defaults to true
-          ),
-        ),
-      );
-
-      // Trigger fullscreen state change
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
-      await tester.pumpAndSettle();
-
-      // Should show default fullscreen view (with video player)
-      expect(find.text('Normal View'), findsNothing);
-      expect(find.byType(ProVideoPlayer), findsOneWidget);
-    });
-
-    testWidgets('uses normal builder when useDefaultFullscreen is false', (tester) async {
       await tester.pumpWidget(
         ProVideoPlayerBuilder(
           controller: fixture.controller,
           useDefaultFullscreen: false,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
+          builder: (context, controller, child) =>
+              const Text('Normal View', textDirection: TextDirection.ltr),
           // No fullscreenBuilder provided
         ),
       );
 
       // Trigger fullscreen state change
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+      fixture.eventController.add(
+        const FullscreenStateChangedEvent(isFullscreen: true),
+      );
       await tester.pumpAndSettle();
 
       // Should still show normal view since useDefaultFullscreen is false
@@ -136,10 +195,12 @@ void main() {
       await tester.pumpWidget(
         ProVideoPlayerBuilder(
           controller: fixture.controller,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
+          builder: (context, controller, child) =>
+              const Text('Normal View', textDirection: TextDirection.ltr),
           fullscreenBuilder: (context, controller, child) =>
               const Text('Fullscreen View', textDirection: TextDirection.ltr),
-          pipBuilder: (context, controller, child) => const Text('PiP View', textDirection: TextDirection.ltr),
+          pipBuilder: (context, controller, child) =>
+              const Text('PiP View', textDirection: TextDirection.ltr),
         ),
       );
 
@@ -170,7 +231,9 @@ void main() {
         ),
       );
 
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+      fixture.eventController.add(
+        const FullscreenStateChangedEvent(isFullscreen: true),
+      );
       await tester.pumpAndSettle();
 
       expect(receivedChild, isNotNull);
@@ -193,48 +256,61 @@ void main() {
       expect(buildCount, 1);
 
       // Trigger a value change
-      fixture.eventController.add(const PositionChangedEvent(Duration(seconds: 10)));
+      fixture.eventController.add(
+        const PositionChangedEvent(Duration(seconds: 10)),
+      );
       await tester.pumpAndSettle();
 
       expect(buildCount, 2);
     });
 
-    testWidgets('uses normal builder when PiP is active but useDefaultPip is false', (tester) async {
+    testWidgets(
+      'uses normal builder when PiP is active but useDefaultPip is false',
+      (tester) async {
+        await tester.pumpWidget(
+          ProVideoPlayerBuilder(
+            controller: fixture.controller,
+            useDefaultPip: false,
+            builder: (context, controller, child) =>
+                const Text('Normal View', textDirection: TextDirection.ltr),
+            // No pipBuilder provided
+          ),
+        );
+
+        // Trigger PiP state change
+        fixture.eventController.add(const PipStateChangedEvent(isActive: true));
+        await tester.pumpAndSettle();
+
+        // Should still show normal view since useDefaultPip is false
+        // (On non-Android platforms this would also show normal view)
+        expect(find.text('Normal View'), findsOneWidget);
+      },
+    );
+
+    testWidgets('exits fullscreen mode when isFullscreen becomes false', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         ProVideoPlayerBuilder(
           controller: fixture.controller,
-          useDefaultPip: false,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
-          // No pipBuilder provided
-        ),
-      );
-
-      // Trigger PiP state change
-      fixture.eventController.add(const PipStateChangedEvent(isActive: true));
-      await tester.pumpAndSettle();
-
-      // Should still show normal view since useDefaultPip is false
-      // (On non-Android platforms this would also show normal view)
-      expect(find.text('Normal View'), findsOneWidget);
-    });
-
-    testWidgets('exits fullscreen mode when isFullscreen becomes false', (tester) async {
-      await tester.pumpWidget(
-        ProVideoPlayerBuilder(
-          controller: fixture.controller,
-          builder: (context, controller, child) => const Text('Normal View', textDirection: TextDirection.ltr),
+          builder: (context, controller, child) =>
+              const Text('Normal View', textDirection: TextDirection.ltr),
           fullscreenBuilder: (context, controller, child) =>
               const Text('Fullscreen View', textDirection: TextDirection.ltr),
         ),
       );
 
       // Enter fullscreen
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+      fixture.eventController.add(
+        const FullscreenStateChangedEvent(isFullscreen: true),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Fullscreen View'), findsOneWidget);
 
       // Exit fullscreen
-      fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: false));
+      fixture.eventController.add(
+        const FullscreenStateChangedEvent(isFullscreen: false),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Normal View'), findsOneWidget);
     });
@@ -257,7 +333,8 @@ void main() {
         ProVideoPlayerBuilder(
           controller: fixture.controller,
           child: const Text('Child', textDirection: TextDirection.ltr),
-          builder: (context, ctrl, child) => const Text('Normal', textDirection: TextDirection.ltr),
+          builder: (context, ctrl, child) =>
+              const Text('Normal', textDirection: TextDirection.ltr),
           pipBuilder: (context, ctrl, child) {
             // Verify parameters are passed correctly
             expect(ctrl, isA<ProVideoPlayerController>());
@@ -271,16 +348,22 @@ void main() {
     });
 
     group('default fullscreen behavior', () {
-      testWidgets('uses 16:9 aspect ratio when video size is unknown', (tester) async {
+      testWidgets('uses 16:9 aspect ratio when video size is unknown', (
+        tester,
+      ) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         await tester.pumpWidget(
           buildTestWidget(
             ProVideoPlayerBuilder(
               controller: fixture.controller,
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
@@ -288,7 +371,9 @@ void main() {
         // Don't send video size event - size will be null
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
         // Should have AspectRatio widget with default 16:9 ratio
@@ -296,28 +381,38 @@ void main() {
         expect(aspectRatioFinder, findsWidgets);
 
         // The first AspectRatio should be the one from _buildDefaultFullscreen
-        final aspectRatios = tester.widgetList<AspectRatio>(aspectRatioFinder).toList();
+        final aspectRatios = tester
+            .widgetList<AspectRatio>(aspectRatioFinder)
+            .toList();
         // 16/9 ≈ 1.778
-        final hasExpectedRatio = aspectRatios.any((ar) => (ar.aspectRatio - 16 / 9).abs() < 0.01);
+        final hasExpectedRatio = aspectRatios.any(
+          (ar) => (ar.aspectRatio - 16 / 9).abs() < 0.01,
+        );
         expect(hasExpectedRatio, isTrue);
       });
 
       testWidgets('wraps video in SafeArea', (tester) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         await tester.pumpWidget(
           buildTestWidget(
             ProVideoPlayerBuilder(
               controller: fixture.controller,
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
         // Should have SafeArea in the fullscreen view
@@ -326,20 +421,26 @@ void main() {
 
       testWidgets('uses black background', (tester) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         await tester.pumpWidget(
           buildTestWidget(
             ProVideoPlayerBuilder(
               controller: fixture.controller,
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
         // Should have at least one ColoredBox with black color
@@ -347,16 +448,25 @@ void main() {
         expect(coloredBoxFinder, findsWidgets);
 
         // Check that at least one ColoredBox has black background
-        final coloredBoxes = tester.widgetList<ColoredBox>(coloredBoxFinder).toList();
-        final hasBlackBackground = coloredBoxes.any((box) => box.color == const Color(0xFF000000));
+        final coloredBoxes = tester
+            .widgetList<ColoredBox>(coloredBoxFinder)
+            .toList();
+        final hasBlackBackground = coloredBoxes.any(
+          (box) => box.color == const Color(0xFF000000),
+        );
         expect(hasBlackBackground, isTrue);
       });
     });
 
     group('control mode preservation', () {
-      testWidgets('default fullscreen view uses the same controlsMode', (tester) async {
+      testWidgets('default fullscreen view uses the same controlsMode', (
+        tester,
+      ) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         await tester.pumpWidget(
@@ -364,13 +474,16 @@ void main() {
             ProVideoPlayerBuilder(
               controller: fixture.controller,
               controlsMode: ControlsMode.none,
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
         // Should show ProVideoPlayer with ControlsMode.none
@@ -381,9 +494,14 @@ void main() {
         expect(player.controlsMode, ControlsMode.none);
       });
 
-      testWidgets('default fullscreen view uses the provided controlsBuilder', (tester) async {
+      testWidgets('default fullscreen view uses the provided controlsBuilder', (
+        tester,
+      ) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         var builderCalled = false;
@@ -396,47 +514,62 @@ void main() {
                 builderCalled = true;
                 return const Text('Custom Controls');
               },
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
-        // Should show ProVideoPlayer with custom controlsBuilder
+        // The video remains separate from the controls overlay so the
+        // controls can use the full fullscreen bounds.
         final playerFinder = find.byType(ProVideoPlayer);
         expect(playerFinder, findsOneWidget);
 
         final player = tester.widget<ProVideoPlayer>(playerFinder);
-        expect(player.controlsBuilder, isNotNull);
+        expect(player.controlsBuilder, isNull);
+        expect(player.controlsMode, ControlsMode.none);
 
         // The builder should be called during build
         expect(builderCalled, isTrue);
         expect(find.text('Custom Controls'), findsOneWidget);
       });
 
-      testWidgets('default fullscreen maintains aspect ratio from video', (tester) async {
+      testWidgets('default fullscreen maintains aspect ratio from video', (
+        tester,
+      ) async {
         when(
-          () => fixture.mockPlatform.buildView(any(), controlsMode: any(named: 'controlsMode')),
+          () => fixture.mockPlatform.buildView(
+            any(),
+            controlsMode: any(named: 'controlsMode'),
+          ),
         ).thenReturn(const Text('Video', textDirection: TextDirection.ltr));
 
         await tester.pumpWidget(
           buildTestWidget(
             ProVideoPlayerBuilder(
               controller: fixture.controller,
-              builder: (context, controller, child) => const Text('Normal View'),
+              builder: (context, controller, child) =>
+                  const Text('Normal View'),
             ),
           ),
         );
 
         // Send video size event
-        fixture.eventController.add(const VideoSizeChangedEvent(width: 1920, height: 1080));
+        fixture.eventController.add(
+          const VideoSizeChangedEvent(width: 1920, height: 1080),
+        );
         await tester.pumpAndSettle();
 
         // Trigger fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        fixture.eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pumpAndSettle();
 
         // Should have AspectRatio widget with 16:9 ratio

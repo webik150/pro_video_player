@@ -94,7 +94,12 @@ class ProVideoPlayerBuilder extends StatelessWidget {
   ///
   /// This is the main UI that is shown when the player is not in
   /// fullscreen or PiP mode.
-  final Widget Function(BuildContext context, ProVideoPlayerController controller, Widget? child) builder;
+  final Widget Function(
+    BuildContext context,
+    ProVideoPlayerController controller,
+    Widget? child,
+  )
+  builder;
 
   /// The controls mode for the video player.
   ///
@@ -116,7 +121,12 @@ class ProVideoPlayerBuilder extends StatelessWidget {
   /// is provided that uses the same [controlsMode] and [controlsBuilder].
   ///
   /// If null and [useDefaultFullscreen] is false, the [builder] is used.
-  final Widget Function(BuildContext context, ProVideoPlayerController controller, Widget? child)? fullscreenBuilder;
+  final Widget Function(
+    BuildContext context,
+    ProVideoPlayerController controller,
+    Widget? child,
+  )?
+  fullscreenBuilder;
 
   /// Builds the Picture-in-Picture view (Android only).
   ///
@@ -130,7 +140,12 @@ class ProVideoPlayerBuilder extends StatelessWidget {
   ///
   /// On iOS, true video-only PiP is used where the video floats independently,
   /// so this builder is not called.
-  final Widget Function(BuildContext context, ProVideoPlayerController controller, Widget? child)? pipBuilder;
+  final Widget Function(
+    BuildContext context,
+    ProVideoPlayerController controller,
+    Widget? child,
+  )?
+  pipBuilder;
 
   /// Whether to use the default fullscreen view when [fullscreenBuilder] is null.
   ///
@@ -155,55 +170,94 @@ class ProVideoPlayerBuilder extends StatelessWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
-    valueListenable: controller,
-    child: child,
-    builder: (context, value, child) {
-      // Fullscreen mode takes priority
-      if (value.isFullscreen) {
-        if (fullscreenBuilder != null) {
-          return fullscreenBuilder!(context, controller, child);
-        }
-        if (useDefaultFullscreen) {
-          return _buildDefaultFullscreen(context);
-        }
-      }
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<VideoPlayerValue>(
+        valueListenable: controller,
+        child: child,
+        builder: (context, value, child) {
+          // Fullscreen mode takes priority
+          if (value.isFullscreen) {
+            if (fullscreenBuilder != null) {
+              return fullscreenBuilder!(context, controller, child);
+            }
+            if (useDefaultFullscreen) {
+              return _buildDefaultFullscreen(context);
+            }
+          }
 
-      // PiP mode - only on Android
-      // On iOS, true video-only PiP is used where the video floats in a
-      // system-controlled window, so the main app should continue normally.
-      // On Android, the entire Activity goes into PiP mode, so we need to
-      // show only the video.
-      if (value.isPipActive && _isAndroid) {
-        if (pipBuilder != null) {
-          return pipBuilder!(context, controller, child);
-        }
-        if (useDefaultPip) {
-          return _buildDefaultPip(context);
-        }
-      }
+          // PiP mode - only on Android
+          // On iOS, true video-only PiP is used where the video floats in a
+          // system-controlled window, so the main app should continue normally.
+          // On Android, the entire Activity goes into PiP mode, so we need to
+          // show only the video.
+          if (value.isPipActive && _isAndroid) {
+            if (pipBuilder != null) {
+              return pipBuilder!(context, controller, child);
+            }
+            if (useDefaultPip) {
+              return _buildDefaultPip(context);
+            }
+          }
 
-      // Normal view
-      return builder(context, controller, child);
-    },
-  );
+          // Normal view
+          return builder(context, controller, child);
+        },
+      );
 
   /// Builds the default fullscreen view.
   ///
   /// Uses a black background with the video player centered, maintaining
   /// the same control mode as the normal view.
   Widget _buildDefaultFullscreen(BuildContext context) {
+    if (controlsMode == ControlsMode.native && controlsBuilder == null) {
+      final videoSize = controller.value.size;
+      final aspectRatio = videoSize != null
+          ? videoSize.width / videoSize.height
+          : 16 / 9;
+
+      return ColoredBox(
+        color: const Color(0xFF000000),
+        child: SafeArea(
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: ProVideoPlayer(
+                controller: controller,
+                controlsMode: controlsMode,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final videoSize = controller.value.size;
-    final aspectRatio = videoSize != null ? videoSize.width / videoSize.height : 16 / 9;
+    final aspectRatio = videoSize != null
+        ? videoSize.width / videoSize.height
+        : 16 / 9;
+    final controls =
+        controlsBuilder?.call(context, controller) ??
+        (controlsMode == ControlsMode.flutter
+            ? VideoPlayerControls(controller: controller)
+            : null);
 
     return ColoredBox(
       color: const Color(0xFF000000),
       child: SafeArea(
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: aspectRatio,
-            child: ProVideoPlayer(controller: controller, controlsMode: controlsMode, controlsBuilder: controlsBuilder),
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: aspectRatio,
+                child: ProVideoPlayer(
+                  controller: controller,
+                  controlsMode: ControlsMode.none,
+                ),
+              ),
+            ),
+            if (controls != null) controls,
+          ],
         ),
       ),
     );
@@ -218,7 +272,10 @@ class ProVideoPlayerBuilder extends StatelessWidget {
     child: Center(
       child: ProVideoPlayer(
         controller: controller,
-        controlsBuilder: (context, ctrl) => VideoPlayerControls(controller: ctrl, compactMode: CompactMode.always),
+        controlsBuilder: (context, ctrl) => VideoPlayerControls(
+          controller: ctrl,
+          compactMode: CompactMode.always,
+        ),
       ),
     ),
   );

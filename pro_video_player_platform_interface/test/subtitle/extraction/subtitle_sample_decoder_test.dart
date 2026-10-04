@@ -169,7 +169,7 @@ void main() {
 
     test('decodes simple text sample', () {
       // TX3G format: 2-byte length (big-endian) + UTF-8 text
-      final text = 'Hello, World!';
+      const text = 'Hello, World!';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = (textBytes.length >> 8) & 0xFF;
@@ -185,7 +185,7 @@ void main() {
     });
 
     test('handles timescale conversion', () {
-      final text = 'Test';
+      const text = 'Test';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = 0;
@@ -218,7 +218,7 @@ void main() {
     });
 
     test('handles unicode text', () {
-      final text = 'Héllo 世界! 🎬';
+      const text = 'Héllo 世界! 🎬';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = (textBytes.length >> 8) & 0xFF;
@@ -281,7 +281,7 @@ void main() {
     test('decodes vttc box with payl payload', () {
       // Build a minimal WVTT sample:
       // vttc box (size 8+8+4=20) containing payl box (size 8+4=12) with "Test"
-      final text = 'Test';
+      const text = 'Test';
       final textBytes = utf8.encode(text);
       final paylSize = 8 + textBytes.length;
       final vttcSize = 8 + paylSize;
@@ -335,7 +335,7 @@ void main() {
     const decoder = MkvSrtDecoder();
 
     test('decodes plain text', () {
-      final text = 'Simple subtitle text';
+      const text = 'Simple subtitle text';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -345,7 +345,7 @@ void main() {
     });
 
     test('trims whitespace', () {
-      final text = '  \n  Text with whitespace  \n  ';
+      const text = '  \n  Text with whitespace  \n  ';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -361,7 +361,7 @@ void main() {
     });
 
     test('handles multi-line text', () {
-      final text = 'Line 1\nLine 2\nLine 3';
+      const text = 'Line 1\nLine 2\nLine 3';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -378,7 +378,7 @@ void main() {
 
     test('decodes ASS dialogue format', () {
       // Format: ReadOrder,Layer,Style,Name,MarginL,MarginR,MarginV,Effect,Text
-      final line = '0,0,Default,,0,0,0,,Hello from ASS';
+      const line = '0,0,Default,,0,0,0,,Hello from ASS';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -388,7 +388,7 @@ void main() {
     });
 
     test('strips ASS override tags', () {
-      final line = r'0,0,Default,,0,0,0,,{\i1}Italic{\i0} and {\b1}bold{\b0}';
+      const line = r'0,0,Default,,0,0,0,,{\i1}Italic{\i0} and {\b1}bold{\b0}';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -398,7 +398,7 @@ void main() {
     });
 
     test('handles newline escapes', () {
-      final line = r'0,0,Default,,0,0,0,,Line 1\NLine 2\nLine 3';
+      const line = r'0,0,Default,,0,0,0,,Line 1\NLine 2\nLine 3';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -408,7 +408,7 @@ void main() {
     });
 
     test('handles text with commas', () {
-      final line = '0,0,Default,,0,0,0,,Hello, world, test';
+      const line = '0,0,Default,,0,0,0,,Hello, world, test';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -418,7 +418,7 @@ void main() {
     });
 
     test('treats non-dialogue lines as plain text', () {
-      final line = 'Plain text without dialogue format';
+      const line = 'Plain text without dialogue format';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -428,7 +428,7 @@ void main() {
     });
 
     test('returns null for empty text after stripping', () {
-      final line = r'0,0,Default,,0,0,0,,{\pos(100,100)}';
+      const line = r'0,0,Default,,0,0,0,,{\pos(100,100)}';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -440,7 +440,7 @@ void main() {
     const decoder = MkvVttDecoder();
 
     test('decodes plain text', () {
-      final text = 'Simple VTT cue';
+      const text = 'Simple VTT cue';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -450,7 +450,7 @@ void main() {
     });
 
     test('strips VTT styling tags', () {
-      final text = '<c.yellow>Colored</c> and <b>bold</b> text';
+      const text = '<c.yellow>Colored</c> and <b>bold</b> text';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -466,7 +466,7 @@ void main() {
     });
 
     test('handles voice spans', () {
-      final text = '<v Speaker>Hello there';
+      const text = '<v Speaker>Hello there';
       final data = Uint8List.fromList(utf8.encode(text));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -479,7 +479,7 @@ void main() {
   group('Tx3gDecoder style parsing', () {
     const decoder = Tx3gDecoder();
 
-    Uint8List _buildTx3gWithStyle({
+    Uint8List buildTx3gWithStyle({
       required String text,
       int startChar = 0,
       int endChar = 0,
@@ -528,47 +528,47 @@ void main() {
     }
 
     test('parses bold style', () {
-      final data = _buildTx3gWithStyle(text: 'Bold text', endChar: 9, faceStyle: 0x01);
+      final data = buildTx3gWithStyle(text: 'Bold text', endChar: 9, faceStyle: 0x01);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isBold == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isBold ?? false), isTrue);
     });
 
     test('parses italic style', () {
-      final data = _buildTx3gWithStyle(text: 'Italic', endChar: 6, faceStyle: 0x02);
+      final data = buildTx3gWithStyle(text: 'Italic', endChar: 6, faceStyle: 0x02);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isItalic == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isItalic ?? false), isTrue);
     });
 
     test('parses underline style', () {
-      final data = _buildTx3gWithStyle(text: 'Underlined', endChar: 10, faceStyle: 0x04);
+      final data = buildTx3gWithStyle(text: 'Underlined', endChar: 10, faceStyle: 0x04);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isUnderline == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isUnderline ?? false), isTrue);
     });
 
     test('parses combined styles', () {
-      final data = _buildTx3gWithStyle(text: 'BoldItalic', endChar: 10, faceStyle: 0x03);
+      final data = buildTx3gWithStyle(text: 'BoldItalic', endChar: 10, faceStyle: 0x03);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isBold == true && s.style?.isItalic == true), isTrue);
+      expect(result.styledSpans!.any((s) => (s.style?.isBold ?? false) && (s.style?.isItalic ?? false)), isTrue);
     });
 
     test('parses font size', () {
-      final data = _buildTx3gWithStyle(text: 'Large', endChar: 5, fontSize: 24);
+      final data = buildTx3gWithStyle(text: 'Large', endChar: 5, fontSize: 24);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
@@ -578,7 +578,7 @@ void main() {
     });
 
     test('parses color', () {
-      final data = _buildTx3gWithStyle(text: 'Red', endChar: 3, r: 255, g: 0, b: 0, a: 255);
+      final data = buildTx3gWithStyle(text: 'Red', endChar: 3, g: 0, b: 0);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
@@ -588,7 +588,7 @@ void main() {
     });
 
     test('handles style starting mid-text', () {
-      final data = _buildTx3gWithStyle(text: 'Plain Bold', startChar: 6, endChar: 10, faceStyle: 0x01);
+      final data = buildTx3gWithStyle(text: 'Plain Bold', startChar: 6, endChar: 10, faceStyle: 0x01);
 
       final result = decoder.decode(data, 0, 1000, 1000);
 
@@ -599,7 +599,7 @@ void main() {
     });
 
     test('handles hclr highlight color atom', () {
-      final text = 'Highlighted';
+      const text = 'Highlighted';
       final textBytes = utf8.encode(text);
       final builder = BytesBuilder();
 
@@ -654,7 +654,7 @@ void main() {
     const decoder = StppDecoder();
 
     test('parses #RGB color format', () {
-      final ttml = '<span tts:color="#F00">Red</span>';
+      const ttml = '<span tts:color="#F00">Red</span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -664,7 +664,7 @@ void main() {
     });
 
     test('parses #RRGGBBAA color format', () {
-      final ttml = '<span tts:color="#FF0000FF">Red</span>';
+      const ttml = '<span tts:color="#FF0000FF">Red</span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -674,7 +674,7 @@ void main() {
     });
 
     test('parses rgba() color format', () {
-      final ttml = '<span tts:color="rgba(255, 0, 0, 0.5)">Semi-transparent red</span>';
+      const ttml = '<span tts:color="rgba(255, 0, 0, 0.5)">Semi-transparent red</span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -693,7 +693,7 @@ void main() {
     });
 
     test('handles combined TTML styles', () {
-      final ttml = '<span tts:fontWeight="bold" tts:fontStyle="italic" tts:textDecoration="underline">Styled</span>';
+      const ttml = '<span tts:fontWeight="bold" tts:fontStyle="italic" tts:textDecoration="underline">Styled</span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -707,7 +707,7 @@ void main() {
     });
 
     test('returns null for spans with no text content', () {
-      final ttml = '<span tts:fontWeight="bold"></span>';
+      const ttml = '<span tts:fontWeight="bold"></span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -715,7 +715,7 @@ void main() {
     });
 
     test('handles nested span tags', () {
-      final ttml = '<span tts:fontWeight="bold"><span>Nested</span></span>';
+      const ttml = '<span tts:fontWeight="bold"><span>Nested</span></span>';
       final data = Uint8List.fromList(utf8.encode(ttml));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -728,7 +728,7 @@ void main() {
   group('WvttDecoder style parsing', () {
     const decoder = WvttDecoder();
 
-    Uint8List _buildWvtt(String text) {
+    Uint8List buildWvtt(String text) {
       final textBytes = utf8.encode(text);
       final paylSize = 8 + textBytes.length;
       final vttcSize = 8 + paylSize;
@@ -758,34 +758,34 @@ void main() {
     }
 
     test('parses bold tag', () {
-      final data = _buildWvtt('<b>Bold</b>');
+      final data = buildWvtt('<b>Bold</b>');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isBold == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isBold ?? false), isTrue);
     });
 
     test('parses italic tag', () {
-      final data = _buildWvtt('<i>Italic</i>');
+      final data = buildWvtt('<i>Italic</i>');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isItalic == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isItalic ?? false), isTrue);
     });
 
     test('parses underline tag', () {
-      final data = _buildWvtt('<u>Underlined</u>');
+      final data = buildWvtt('<u>Underlined</u>');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
       expect(result!.styledSpans, isNotNull);
-      expect(result.styledSpans!.any((s) => s.style?.isUnderline == true), isTrue);
+      expect(result.styledSpans!.any((s) => s.style?.isUnderline ?? false), isTrue);
     });
 
     test('handles nested tags', () {
-      final data = _buildWvtt('<b><i>Bold Italic</i></b>');
+      final data = buildWvtt('<b><i>Bold Italic</i></b>');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
@@ -793,7 +793,7 @@ void main() {
     });
 
     test('handles unclosed tag gracefully', () {
-      final data = _buildWvtt('<b>Unclosed bold');
+      final data = buildWvtt('<b>Unclosed bold');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
@@ -801,7 +801,7 @@ void main() {
     });
 
     test('handles text before and after tags', () {
-      final data = _buildWvtt('Before <b>bold</b> after');
+      final data = buildWvtt('Before <b>bold</b> after');
       final result = decoder.decode(data, 0, 1000, 1000);
 
       expect(result, isNotNull);
@@ -815,7 +815,7 @@ void main() {
     const decoder = MkvAssDecoder();
 
     test('parses 6-digit BGR color', () {
-      final line = r'0,0,Default,,0,0,0,,{\c&HFF0000&}Blue text';
+      const line = r'0,0,Default,,0,0,0,,{\c&HFF0000&}Blue text';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -827,7 +827,7 @@ void main() {
     });
 
     test('parses 8-digit ABGR color', () {
-      final line = r'0,0,Default,,0,0,0,,{\c&H80FF0000&}Semi-transparent blue';
+      const line = r'0,0,Default,,0,0,0,,{\c&H80FF0000&}Semi-transparent blue';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -836,7 +836,7 @@ void main() {
     });
 
     test('parses 1c (primary color) tag', () {
-      final line = r'0,0,Default,,0,0,0,,{\1c&HFF0000&}Primary color';
+      const line = r'0,0,Default,,0,0,0,,{\1c&HFF0000&}Primary color';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -846,7 +846,7 @@ void main() {
     });
 
     test('handles multiple style changes', () {
-      final line = r'0,0,Default,,0,0,0,,{\b1}Bold{\b0} {\i1}Italic{\i0}';
+      const line = r'0,0,Default,,0,0,0,,{\b1}Bold{\b0} {\i1}Italic{\i0}';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -857,7 +857,7 @@ void main() {
     });
 
     test('handles lowercase newline escape', () {
-      final line = r'0,0,Default,,0,0,0,,Line 1\nLine 2';
+      const line = r'0,0,Default,,0,0,0,,Line 1\nLine 2';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -867,7 +867,7 @@ void main() {
     });
 
     test('ignores unknown tags', () {
-      final line = r'0,0,Default,,0,0,0,,{\unknown}Text{\end}';
+      const line = r'0,0,Default,,0,0,0,,{\unknown}Text{\end}';
       final data = Uint8List.fromList(utf8.encode(line));
 
       final result = decoder.decode(data, 0, 1000, 1000);
@@ -910,7 +910,7 @@ void main() {
     const decoder = Tx3gDecoder();
 
     test('handles zero timescale gracefully', () {
-      final text = 'Test';
+      const text = 'Test';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = 0;
@@ -925,7 +925,7 @@ void main() {
     });
 
     test('handles negative timescale gracefully', () {
-      final text = 'Test';
+      const text = 'Test';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = 0;
@@ -939,7 +939,7 @@ void main() {
     });
 
     test('handles large timestamps', () {
-      final text = 'Test';
+      const text = 'Test';
       final textBytes = utf8.encode(text);
       final data = Uint8List(2 + textBytes.length);
       data[0] = 0;

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:pro_video_player_platform_interface/pro_video_player_platform_interface.dart';
 
 import 'controls/compact_layout.dart';
@@ -83,7 +85,10 @@ class VideoPlayerControls extends StatefulWidget {
     this.maxPlayerToolbarActions,
     this.autoOverflowActions = true,
     this.onDismiss,
-    this.forceMobileLayout = false, // Test-only: force mobile layout even on desktop
+    this.onControlsControllerCreated,
+    this.onSeekBarFocusNodeCreated,
+    this.forceMobileLayout =
+        false, // Test-only: force mobile layout even on desktop
     this.testIsPipAvailable,
     this.testIsBackgroundPlaybackSupported,
     this.testIsCastingSupported,
@@ -220,6 +225,15 @@ class VideoPlayerControls extends StatefulWidget {
   /// the player while keeping the fullscreen-only behavior (no exit-to-windowed).
   final VoidCallback? onDismiss;
 
+  /// Callback invoked after the controls controller has been created.
+  ///
+  /// This lets surrounding widgets coordinate controls visibility with
+  /// interactions that live outside the controls focus subtree.
+  final ValueChanged<VideoControlsController>? onControlsControllerCreated;
+
+  /// Callback invoked after the seek bar focus node has been created.
+  final ValueChanged<FocusNode>? onSeekBarFocusNodeCreated;
+
   /// Force mobile layout even on desktop platforms.
   ///
   /// This is primarily for testing to avoid desktop-specific gesture wrappers.
@@ -250,6 +264,45 @@ class VideoPlayerControls extends StatefulWidget {
 
 class _VideoPlayerControlsState extends State<VideoPlayerControls> {
   late final VideoControlsController _controlsController;
+  late final FocusNode _seekBarFocusNode;
+  late final FocusNode _toolbarFocusNode;
+
+  KeyEventResult _handleControlsNavigationKey(FocusNode node, KeyEvent event) {
+    if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+        (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+            event.logicalKey == LogicalKeyboardKey.arrowDown ||
+            event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+            event.logicalKey == LogicalKeyboardKey.arrowRight)) {
+      _controlsController
+        ..showControls()
+        ..resetHideTimer();
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+          _seekBarFocusNode.canRequestFocus) {
+        if (_seekBarFocusNode.hasFocus) {
+          FocusScope.of(
+            node.context!,
+          ).focusInDirection(TraversalDirection.down);
+        } else {
+          _seekBarFocusNode.requestFocus();
+        }
+        return KeyEventResult.handled;
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp &&
+          _seekBarFocusNode.hasFocus) {
+        if (_toolbarFocusNode.context != null &&
+            _toolbarFocusNode.canRequestFocus) {
+          _toolbarFocusNode.requestFocus();
+        } else {
+          FocusScope.of(node.context!).focusInDirection(TraversalDirection.up);
+        }
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
 
   @override
   void initState() {
@@ -264,20 +317,29 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
       playbackOptionsConfig: widget.playbackOptionsConfig,
       fullscreenConfig: widget.fullscreenConfig,
       testIsPipAvailable: widget.testIsPipAvailable,
-      testIsBackgroundPlaybackSupported: widget.testIsBackgroundPlaybackSupported,
+      testIsBackgroundPlaybackSupported:
+          widget.testIsBackgroundPlaybackSupported,
       testIsCastingSupported: widget.testIsCastingSupported,
       onShowKeyboardShortcuts: () {
         if (mounted) {
-          KeyboardShortcutsDialog.show(context: context, theme: widget.theme ?? const VideoPlayerTheme());
+          KeyboardShortcutsDialog.show(
+            context: context,
+            theme: widget.theme ?? const VideoPlayerTheme(),
+          );
         }
       },
     );
+    _seekBarFocusNode = FocusNode(debugLabel: 'Video seek bar');
+    _toolbarFocusNode = FocusNode(debugLabel: 'Video toolbar');
+    widget.onControlsControllerCreated?.call(_controlsController);
+    widget.onSeekBarFocusNodeCreated?.call(_seekBarFocusNode);
 
     // Listen to controller changes to trigger rebuilds
     _controlsController.addListener(_onControllerChanged);
 
     // Auto-enter fullscreen if fullscreenOnly mode is enabled
-    if (widget.controller.options.fullscreenOnly && !widget.controller.value.isFullscreen) {
+    if (widget.controller.options.fullscreenOnly &&
+        !widget.controller.value.isFullscreen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _enterFullscreen();
       });
@@ -297,6 +359,8 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
     _controlsController
       ..removeListener(_onControllerChanged)
       ..dispose();
+    _seekBarFocusNode.dispose();
+    _toolbarFocusNode.dispose();
     super.dispose();
   }
 
@@ -349,7 +413,11 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
       // Default: pop fullscreen route and exit fullscreen
       if (_isDesktopPlatform) {
         widget.controller.setFlutterFullscreenState(isFullscreen: false);
-        unawaited(ProVideoPlayerPlatform.instance.setWindowFullscreen(fullscreen: false));
+        unawaited(
+          ProVideoPlayerPlatform.instance.setWindowFullscreen(
+            fullscreen: false,
+          ),
+        );
       } else {
         unawaited(widget.controller.exitFullscreen());
       }
@@ -362,21 +430,28 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
       Navigator.of(context).push(
         PageRouteBuilder<void>(
           barrierColor: Colors.black,
-          pageBuilder: (context, animation, secondaryAnimation) => FullscreenVideoPage(
-            controller: widget.controller,
-            theme: widget.theme,
-            subtitleStyle: widget.subtitleStyle,
-            onDismiss: widget.onDismiss,
-            onExitFullscreen: () {
-              if (_isDesktopPlatform) {
-                widget.controller.setFlutterFullscreenState(isFullscreen: false);
-                unawaited(ProVideoPlayerPlatform.instance.setWindowFullscreen(fullscreen: false));
-              } else {
-                unawaited(widget.controller.exitFullscreen());
-              }
-              unawaited(Navigator.of(context).maybePop());
-            },
-          ),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              FullscreenVideoPage(
+                controller: widget.controller,
+                theme: widget.theme,
+                subtitleStyle: widget.subtitleStyle,
+                onDismiss: widget.onDismiss,
+                onExitFullscreen: () {
+                  if (_isDesktopPlatform) {
+                    widget.controller.setFlutterFullscreenState(
+                      isFullscreen: false,
+                    );
+                    unawaited(
+                      ProVideoPlayerPlatform.instance.setWindowFullscreen(
+                        fullscreen: false,
+                      ),
+                    );
+                  } else {
+                    unawaited(widget.controller.exitFullscreen());
+                  }
+                  unawaited(Navigator.of(context).maybePop());
+                },
+              ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 200),
@@ -388,9 +463,15 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
     // Enter fullscreen
     if (_isDesktopPlatform) {
       widget.controller.setFlutterFullscreenState(isFullscreen: true);
-      unawaited(ProVideoPlayerPlatform.instance.setWindowFullscreen(fullscreen: true));
+      unawaited(
+        ProVideoPlayerPlatform.instance.setWindowFullscreen(fullscreen: true),
+      );
     } else {
-      unawaited(widget.controller.enterFullscreen(orientation: widget.fullscreenConfig.orientation));
+      unawaited(
+        widget.controller.enterFullscreen(
+          orientation: widget.fullscreenConfig.orientation,
+        ),
+      );
     }
   }
 
@@ -404,7 +485,10 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
         final isPipActive = widget.controller.value.isPipActive;
         if (isPipActive) {
           if (widget.renderSubtitlesInternally) {
-            return SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle);
+            return SubtitleOverlay(
+              controller: widget.controller,
+              style: widget.subtitleStyle,
+            );
           }
           return const SizedBox.shrink();
         }
@@ -445,7 +529,14 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
                 unawaited(_controlsController.updateSystemUiForFullscreen());
               }
             },
-            child: IgnorePointer(ignoring: !_controlsController.controlsState.isFullyVisible, child: controlsContent),
+            child: IgnorePointer(
+              ignoring: !_controlsController.controlsState.isFullyVisible,
+              child: Focus(
+                key: const ValueKey('video-controls-navigation-focus'),
+                onKeyEvent: _handleControlsNavigationKey,
+                child: controlsContent,
+              ),
+            ),
           ),
         );
 
@@ -454,7 +545,10 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
           children: [
             const SizedBox.expand(),
             if (widget.renderSubtitlesInternally)
-              SubtitleOverlay(controller: widget.controller, style: widget.subtitleStyle),
+              SubtitleOverlay(
+                controller: widget.controller,
+                style: widget.subtitleStyle,
+              ),
             controlsOverlay,
           ],
         );
@@ -480,9 +574,11 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
             seekSecondsPerInch: widget.gestureConfig.seekSecondsPerInch,
             enableDoubleTapSeek: widget.gestureConfig.enableDoubleTapSeek,
             enableVolumeGesture: widget.gestureConfig.enableVolumeGesture,
-            enableBrightnessGesture: widget.gestureConfig.enableBrightnessGesture,
+            enableBrightnessGesture:
+                widget.gestureConfig.enableBrightnessGesture,
             enableSeekGesture: widget.gestureConfig.enableSeekGesture,
-            enablePlaybackSpeedGesture: widget.gestureConfig.enablePlaybackSpeedGesture,
+            enablePlaybackSpeedGesture:
+                widget.gestureConfig.enablePlaybackSpeedGesture,
             autoHide: widget.behaviorConfig.autoHide,
             autoHideDuration: widget.behaviorConfig.autoHideDuration,
             onBrightnessChanged: widget.gestureConfig.onBrightnessChanged,
@@ -511,13 +607,19 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
         minimalToolbarOnDesktop: widget.behaviorConfig.minimalToolbarOnDesktop,
         shouldShowVolumeButton: _controlsController.shouldShowVolumeButton,
         liveScrubbingMode: widget.playbackOptionsConfig.liveScrubbingMode,
-        enableSeekBarHoverPreview: widget.behaviorConfig.enableSeekBarHoverPreview,
+        enableSeekBarHoverPreview:
+            widget.behaviorConfig.enableSeekBarHoverPreview,
         showFullscreenButton: widget.buttonsConfig.showFullscreenButton,
         onDragStart: () => setState(_controlsController.startDragging),
         onDragEnd: () => setState(_controlsController.endDragging),
-        onToggleTimeDisplay: () => setState(_controlsController.toggleTimeDisplay),
-        onMouseEnter: () => setState(() => _controlsController.setMouseOverControls(isOver: true)),
-        onMouseExit: () => setState(() => _controlsController.setMouseOverControls(isOver: false)),
+        onToggleTimeDisplay: () =>
+            setState(_controlsController.toggleTimeDisplay),
+        onMouseEnter: () => setState(
+          () => _controlsController.setMouseOverControls(isOver: true),
+        ),
+        onMouseExit: () => setState(
+          () => _controlsController.setMouseOverControls(isOver: false),
+        ),
         onResetHideTimer: _controlsController.resetHideTimer,
         onFullscreenEnter: _enterFullscreen,
         onFullscreenExit: _exitFullscreen,
@@ -534,12 +636,18 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
       skipDuration: widget.gestureConfig.skipDuration,
       liveScrubbingMode: widget.playbackOptionsConfig.liveScrubbingMode,
       showSeekBarHoverPreview: widget.behaviorConfig.enableSeekBarHoverPreview,
+      seekBarFocusNode: _seekBarFocusNode,
+      toolbarFocusNode: _toolbarFocusNode,
+      onKeyboardInteraction: () => _controlsController
+        ..showControls()
+        ..resetHideTimer(),
       showSubtitleButton: widget.buttonsConfig.showSubtitleButton,
       showAudioButton: widget.buttonsConfig.showAudioButton,
       showQualityButton: widget.buttonsConfig.showQualityButton,
       showSpeedButton: widget.buttonsConfig.showSpeedButton,
       showScalingModeButton: widget.buttonsConfig.showScalingModeButton,
-      showBackgroundPlaybackButton: widget.buttonsConfig.showBackgroundPlaybackButton,
+      showBackgroundPlaybackButton:
+          widget.buttonsConfig.showBackgroundPlaybackButton,
       showPipButton: widget.buttonsConfig.showPipButton,
       showOrientationLockButton: widget.buttonsConfig.showOrientationLockButton,
       showFullscreenButton: widget.buttonsConfig.showFullscreenButton,
@@ -550,15 +658,22 @@ class _VideoPlayerControlsState extends State<VideoPlayerControls> {
       isDesktopPlatform: _isDesktopPlatform,
       onDragStart: () => setState(_controlsController.startDragging),
       onDragEnd: () => setState(_controlsController.endDragging),
-      onToggleTimeDisplay: () => setState(_controlsController.toggleTimeDisplay),
-      onShowQualityPicker: (context, theme) => _controlsController.showQualityPicker(context: context, theme: theme),
-      onShowSubtitlePicker: (context, theme) => _controlsController.showSubtitlePicker(context: context, theme: theme),
-      onShowAudioPicker: (context, theme) => _controlsController.showAudioPicker(context: context, theme: theme),
-      onShowChaptersPicker: (context, theme) => _controlsController.showChaptersPicker(context: context, theme: theme),
-      onShowSpeedPicker: (context, theme) => _controlsController.showSpeedPicker(context: context, theme: theme),
-      onShowScalingModePicker: (theme) => _controlsController.showScalingModePicker(context: context, theme: theme),
-      onShowOrientationLockPicker: (theme) =>
-          _controlsController.showOrientationLockPicker(context: context, theme: theme),
+      onToggleTimeDisplay: () =>
+          setState(_controlsController.toggleTimeDisplay),
+      onShowQualityPicker: (context, theme) =>
+          _controlsController.showQualityPicker(context: context, theme: theme),
+      onShowSubtitlePicker: (context, theme) => _controlsController
+          .showSubtitlePicker(context: context, theme: theme),
+      onShowAudioPicker: (context, theme) =>
+          _controlsController.showAudioPicker(context: context, theme: theme),
+      onShowChaptersPicker: (context, theme) => _controlsController
+          .showChaptersPicker(context: context, theme: theme),
+      onShowSpeedPicker: (context, theme) =>
+          _controlsController.showSpeedPicker(context: context, theme: theme),
+      onShowScalingModePicker: (theme) => _controlsController
+          .showScalingModePicker(context: context, theme: theme),
+      onShowOrientationLockPicker: (theme) => _controlsController
+          .showOrientationLockPicker(context: context, theme: theme),
       onFullscreenEnter: _enterFullscreen,
       onFullscreenExit: _exitFullscreen,
       centerControls: _buildCenterControls(theme),

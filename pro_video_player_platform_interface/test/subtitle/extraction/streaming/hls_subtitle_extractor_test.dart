@@ -27,7 +27,6 @@ void main() {
         uri: 'https://example.com/subs/en.m3u8',
         isDefault: true,
         isAutoSelect: true,
-        isForced: false,
         isSDH: true,
       );
 
@@ -47,7 +46,6 @@ void main() {
         name: 'Spanish',
         language: 'es',
         uri: 'https://example.com/subs/es.m3u8',
-        isDefault: false,
         isAutoSelect: true,
         isForced: true,
         characteristics: 'public.accessibility.describes-video',
@@ -66,7 +64,7 @@ void main() {
     });
 
     test('toString returns readable representation', () {
-      const info = HlsSubtitleInfo(groupId: 'subs', name: 'English', language: 'en', isDefault: true, isForced: false);
+      const info = HlsSubtitleInfo(groupId: 'subs', name: 'English', language: 'en', isDefault: true);
 
       final str = info.toString();
       expect(str, contains('HlsSubtitleInfo'));
@@ -159,7 +157,8 @@ segment2.vtt
         }
 
         if (path.endsWith('segment1.vtt')) {
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Hello World
@@ -170,7 +169,8 @@ This is segment 1
         }
 
         if (path.endsWith('segment2.vtt')) {
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:10.000 --> 00:00:15.000
 This is segment 2
@@ -181,7 +181,8 @@ Goodbye
         }
 
         if (path.endsWith('direct.vtt')) {
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Direct VTT content
@@ -208,7 +209,8 @@ Direct VTT content
     test('extracts cues from direct VTT file', () async {
       final client = MockClient((request) async {
         if (request.url.path.endsWith('direct.vtt')) {
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Direct VTT content
@@ -237,12 +239,10 @@ Direct VTT content
     });
 
     test('handles VTT without WEBVTT header', () async {
-      final client = MockClient((request) async {
-        return http.Response('''
+      final client = MockClient((request) async => http.Response('''
 00:00:00.000 --> 00:00:05.000
 No header
-''', 200);
-      });
+''', 200));
 
       final extractor = HlsSubtitleExtractor(client: client);
       const track = HlsSubtitleInfo(groupId: 'subs', name: 'English', uri: 'https://example.com/noheader.vtt');
@@ -308,7 +308,8 @@ No header
       test('selects track by preferred language', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('master.m3u8')) {
-            return http.Response('''#EXTM3U
+            return http.Response('''
+#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",DEFAULT=NO,URI="en.vtt"
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Spanish",LANGUAGE="es",DEFAULT=YES,URI="es.vtt"
 ''', 200);
@@ -336,7 +337,8 @@ No header
       test('falls back to default track when no language match', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('master.m3u8')) {
-            return http.Response('''#EXTM3U
+            return http.Response('''
+#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",DEFAULT=NO,URI="en.vtt"
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Spanish",LANGUAGE="es",DEFAULT=YES,URI="es.vtt"
 ''', 200);
@@ -361,7 +363,8 @@ No header
       test('falls back to first track when no default', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('master.m3u8')) {
-            return http.Response('''#EXTM3U
+            return http.Response('''
+#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",DEFAULT=NO,URI="en.vtt"
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Spanish",LANGUAGE="es",DEFAULT=NO,URI="es.vtt"
 ''', 200);
@@ -405,7 +408,8 @@ segment2.vtt
 
           if (path.endsWith('segment1.vtt')) {
             // First segment has cue from 3s-7s
-            return http.Response('''WEBVTT
+            return http.Response('''
+WEBVTT
 
 00:00:03.000 --> 00:00:07.000
 Captain's log
@@ -417,7 +421,8 @@ Segment 1 only
 
           if (path.endsWith('segment2.vtt')) {
             // Second segment repeats the 3s-7s cue (common in HLS)
-            return http.Response('''WEBVTT
+            return http.Response('''
+WEBVTT
 
 00:00:03.000 --> 00:00:07.000
 Captain's log
@@ -463,7 +468,8 @@ segment.vtt
           }
 
           if (path.endsWith('segment.vtt')) {
-            return http.Response('''WEBVTT
+            return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Hello
@@ -494,7 +500,8 @@ Hello
       test('matches exact language codes', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('master.m3u8')) {
-            return http.Response('''#EXTM3U
+            return http.Response('''
+#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="en.vtt"
 ''', 200);
           }
@@ -517,7 +524,8 @@ Hello
       test('matches language code prefixes', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('master.m3u8')) {
-            return http.Response('''#EXTM3U
+            return http.Response('''
+#EXTM3U
 #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="eng",URI="eng.vtt"
 ''', 200);
           }

@@ -283,7 +283,7 @@ class StppDecoder implements SubtitleSampleDecoder {
   /// Creates an STPP decoder.
   const StppDecoder();
 
-  static final _spanPattern = RegExp(r'<span[^>]*>(.*?)</span>', caseSensitive: false, dotAll: true);
+  static final _spanPattern = RegExp('<span[^>]*>(.*?)</span>', caseSensitive: false, dotAll: true);
   static final _fontWeightBold = RegExp('tts:fontWeight\\s*=\\s*["\']bold["\']', caseSensitive: false);
   static final _fontStyleItalic = RegExp('tts:fontStyle\\s*=\\s*["\']italic["\']', caseSensitive: false);
   static final _textDecorationUnderline = RegExp(
@@ -697,7 +697,7 @@ class MkvAssDecoder implements SubtitleSampleDecoder {
 
   Color? _parseAssColor(String tag) {
     // Extract hex value from &HBBGGRR& or &HAABBGGRR&
-    final hexMatch = RegExp(r'&H([0-9A-Fa-f]+)&?').firstMatch(tag);
+    final hexMatch = RegExp('&H([0-9A-Fa-f]+)&?').firstMatch(tag);
     if (hexMatch == null) return null;
 
     final hex = hexMatch.group(1)!;

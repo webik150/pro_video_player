@@ -651,9 +651,8 @@ class MockDashBitrateInfo implements DashBitrateInfoInterface {
 
 /// Mock DASH audio track.
 class MockDashAudioTrack implements DashAudioTrackInterface {
-  MockDashAudioTrack({required this.index, required String lang, required String label, this.isDefault = false})
-    : lang = lang,
-      _label = label;
+  MockDashAudioTrack({required this.index, required String this.lang, required String label, this.isDefault = false})
+    : _label = label;
 
   @override
   final int index;
@@ -678,9 +677,8 @@ class MockDashAudioTrack implements DashAudioTrackInterface {
 
 /// Mock DASH text track.
 class MockDashTextTrack implements DashTextTrackInterface {
-  MockDashTextTrack({required this.index, required String lang, required String label, this.isDefault = false})
-    : lang = lang,
-      _label = label;
+  MockDashTextTrack({required this.index, required String this.lang, required String label, this.isDefault = false})
+    : _label = label;
 
   @override
   final int index;

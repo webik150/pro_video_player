@@ -135,7 +135,7 @@ void main() {
       test('increments continuity counters across segments', () {
         final samples = [_createVideoSample(trackId: 1, dts: 0, isKeyframe: true)];
 
-        final segment0 = writer.writeSegment(samples: samples, videoTrackId: 1, videoCodec: 'avc1', segmentIndex: 0);
+        final segment0 = writer.writeSegment(samples: samples, videoTrackId: 1, videoCodec: 'avc1');
 
         final segment1 = writer.writeSegment(samples: samples, videoTrackId: 1, videoCodec: 'avc1', segmentIndex: 1);
 
@@ -248,7 +248,7 @@ void main() {
         final samples = <MediaSample>[];
         for (var i = 0; i < 90; i++) {
           // 90 frames = 3 seconds
-          samples.add(_createVideoSample(trackId: 1, dts: i * 33333, isKeyframe: i == 0, duration: 33333));
+          samples.add(_createVideoSample(trackId: 1, dts: i * 33333, isKeyframe: i == 0));
         }
 
         final segments = await writer
@@ -308,7 +308,6 @@ void main() {
               samples: sampleStream,
               videoTrackId: 1,
               videoCodec: 'avc1',
-              config: const SegmentConfig(targetDuration: Duration(seconds: 6), alignToKeyframes: true),
             )
             .toList();
 
@@ -330,7 +329,7 @@ MediaSample _createVideoSample({
   // Create some fake NAL unit data (AVC length-prefixed format)
   final nalData = Uint8List.fromList([
     0x00, 0x00, 0x00, 0x05, // Length = 5
-    isKeyframe ? 0x65 : 0x41, // NAL type (IDR or non-IDR)
+    if (isKeyframe) 0x65 else 0x41, // NAL type (IDR or non-IDR)
     0x01, 0x02, 0x03, 0x04, // Slice data
   ]);
 

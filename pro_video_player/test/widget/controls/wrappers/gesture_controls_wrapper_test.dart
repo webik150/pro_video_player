@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -10,9 +11,12 @@ import 'package:pro_video_player_platform_interface/pro_video_player_platform_in
 import '../../../shared/test_constants.dart';
 import '../../../shared/test_helpers.dart';
 
-class MockProVideoPlayerPlatform extends Mock with MockPlatformInterfaceMixin implements ProVideoPlayerPlatform {}
+class MockProVideoPlayerPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements ProVideoPlayerPlatform {}
 
-class MockVideoControlsController extends Mock implements VideoControlsController {}
+class MockVideoControlsController extends Mock
+    implements VideoControlsController {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,14 +44,21 @@ void main() {
       ),
     ).thenAnswer((_) async => 1);
 
-    when(() => mockPlatform.events(any())).thenAnswer((_) => eventController.stream);
+    when(
+      () => mockPlatform.events(any()),
+    ).thenAnswer((_) => eventController.stream);
     when(() => mockPlatform.dispose(any())).thenAnswer((_) async {});
 
     // Mock controls controller
-    when(() => mockControlsController.controlsState).thenReturn(VideoControlsState()..showControls());
+    when(
+      () => mockControlsController.controlsState,
+    ).thenReturn(VideoControlsState()..showControls());
     when(() => mockControlsController.showControls()).thenReturn(null);
     when(() => mockControlsController.hideControls()).thenReturn(null);
-    when(() => mockControlsController.gestureSeekPositionValue = any()).thenReturn(null);
+    when(() => mockControlsController.resetHideTimer()).thenReturn(null);
+    when(
+      () => mockControlsController.gestureSeekPositionValue = any(),
+    ).thenReturn(null);
   });
 
   tearDown(() async {
@@ -58,7 +69,9 @@ void main() {
   group('GestureControlsWrapper', () {
     testWidgets('renders child widget', (tester) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -85,7 +98,9 @@ void main() {
 
     testWidgets('wraps child with VideoPlayerGestureDetector', (tester) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -110,9 +125,47 @@ void main() {
       expect(find.byType(VideoPlayerGestureDetector), findsOneWidget);
     });
 
-    testWidgets('passes correct skip duration to gesture detector', (tester) async {
+    testWidgets('shows controls when navigating with the keyboard', (
+      tester,
+    ) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          GestureControlsWrapper(
+            controller: controller,
+            controlsController: mockControlsController,
+            enableDoubleTapSeek: true,
+            enableVolumeGesture: true,
+            enableBrightnessGesture: true,
+            enableSeekGesture: true,
+            skipDuration: const Duration(seconds: 10),
+            seekSecondsPerInch: 10,
+            autoHide: true,
+            autoHideDuration: const Duration(seconds: 3),
+            enablePlaybackSpeedGesture: true,
+            onBrightnessChanged: null,
+            child: const Center(child: Text('Video')),
+          ),
+        ),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+
+      verify(() => mockControlsController.showControls()).called(1);
+      verify(() => mockControlsController.resetHideTimer()).called(1);
+    });
+
+    testWidgets('passes correct skip duration to gesture detector', (
+      tester,
+    ) async {
+      final controller = ProVideoPlayerController();
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       const testSkipDuration = Duration(seconds: 15);
 
@@ -136,14 +189,18 @@ void main() {
         ),
       );
 
-      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       expect(gestureDetector.seekDuration, equals(testSkipDuration));
     });
 
     testWidgets('passes enable flags to gesture detector', (tester) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -165,7 +222,9 @@ void main() {
         ),
       );
 
-      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       expect(gestureDetector.enableDoubleTapSeek, isFalse);
       expect(gestureDetector.enableVolumeGesture, isFalse);
@@ -173,9 +232,13 @@ void main() {
       expect(gestureDetector.enableSeekGesture, isTrue);
     });
 
-    testWidgets('shows controls when visibility callback is true', (tester) async {
+    testWidgets('shows controls when visibility callback is true', (
+      tester,
+    ) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -198,7 +261,9 @@ void main() {
       );
 
       // Get the gesture detector widget and trigger the callback
-      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       // Simulate the callback
       gestureDetector.onControlsVisibilityChanged?.call(true);
@@ -207,9 +272,13 @@ void main() {
       verify(() => mockControlsController.showControls()).called(1);
     });
 
-    testWidgets('hides controls when visibility callback is false', (tester) async {
+    testWidgets('hides controls when visibility callback is false', (
+      tester,
+    ) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -232,7 +301,9 @@ void main() {
       );
 
       // Get the gesture detector widget and trigger the callback
-      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       // Simulate the callback
       gestureDetector.onControlsVisibilityChanged?.call(false);
@@ -241,9 +312,13 @@ void main() {
       verify(() => mockControlsController.hideControls()).called(1);
     });
 
-    testWidgets('updates gesture seek position when callback is triggered', (tester) async {
+    testWidgets('updates gesture seek position when callback is triggered', (
+      tester,
+    ) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -266,19 +341,25 @@ void main() {
       );
 
       // Get the gesture detector widget and trigger the callback
-      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      final gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       // Simulate the seek gesture update callback
       const testPosition = Duration(seconds: 30);
       gestureDetector.onSeekGestureUpdate?.call(testPosition);
       await tester.pump();
 
-      verify(() => mockControlsController.gestureSeekPositionValue = testPosition).called(1);
+      verify(
+        () => mockControlsController.gestureSeekPositionValue = testPosition,
+      ).called(1);
     });
 
     testWidgets('all enable flags default to their values', (tester) async {
       final controller = ProVideoPlayerController();
-      await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
 
       // Test with all enabled
       await tester.pumpWidget(
@@ -301,7 +382,9 @@ void main() {
         ),
       );
 
-      var gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      var gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       expect(gestureDetector.enableDoubleTapSeek, isTrue);
       expect(gestureDetector.enableVolumeGesture, isTrue);
@@ -329,7 +412,9 @@ void main() {
         ),
       );
 
-      gestureDetector = tester.widget<VideoPlayerGestureDetector>(find.byType(VideoPlayerGestureDetector));
+      gestureDetector = tester.widget<VideoPlayerGestureDetector>(
+        find.byType(VideoPlayerGestureDetector),
+      );
 
       expect(gestureDetector.enableDoubleTapSeek, isFalse);
       expect(gestureDetector.enableVolumeGesture, isFalse);

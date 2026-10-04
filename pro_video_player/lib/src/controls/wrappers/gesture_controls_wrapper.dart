@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show KeyDownEvent, KeyRepeatEvent, LogicalKeyboardKey;
 
 import '../../pro_video_player_controller.dart';
 import '../../video_controls_controller.dart';
@@ -71,6 +73,20 @@ class GestureControlsWrapper extends StatelessWidget {
   /// Callback when brightness is changed.
   final ValueChanged<double>? onBrightnessChanged;
 
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+        (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+            event.logicalKey == LogicalKeyboardKey.arrowDown ||
+            event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+            event.logicalKey == LogicalKeyboardKey.arrowRight)) {
+      controlsController
+        ..showControls()
+        ..resetHideTimer();
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) => VideoPlayerGestureDetector(
     controller: controller,
@@ -101,6 +117,6 @@ class GestureControlsWrapper extends StatelessWidget {
     onSeekGestureUpdate: (position) {
       controlsController.gestureSeekPositionValue = position;
     },
-    child: child,
+    child: Focus(onKeyEvent: _handleKeyEvent, child: child),
   );
 }

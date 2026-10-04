@@ -141,13 +141,13 @@ void main() {
     });
 
     test('creates with styled spans', () {
-      final sample = DecodedSubtitleSample(
+      const sample = DecodedSubtitleSample(
         startTime: Duration.zero,
-        endTime: const Duration(seconds: 3),
+        endTime: Duration(seconds: 3),
         text: 'Styled text',
         styledSpans: [
           StyledTextSpan.plain('Styled '),
-          const StyledTextSpan(text: 'text', style: SubtitleTextStyle(isBold: true)),
+          StyledTextSpan(text: 'text', style: SubtitleTextStyle(isBold: true)),
         ],
       );
 
@@ -225,7 +225,7 @@ Uint8List _buildMp4Box(String type, Uint8List content) {
 
 /// Builds a tkhd (track header) box.
 Uint8List _buildTkhdBox({required int trackId, int version = 0}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.add(version);
@@ -255,7 +255,7 @@ Uint8List _buildTkhdBox({required int trackId, int version = 0}) {
 
 /// Builds an mdhd (media header) box.
 Uint8List _buildMdhdBox({required int timescale, int version = 0}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.add(version);
@@ -281,7 +281,7 @@ Uint8List _buildMdhdBox({required int timescale, int version = 0}) {
 
 /// Builds an stts (decoding time to sample) box.
 Uint8List _buildSttsBox({required int sampleCount, int sampleDelta = 1000}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.addAll([0, 0, 0, 0]);
@@ -298,7 +298,7 @@ Uint8List _buildSttsBox({required int sampleCount, int sampleDelta = 1000}) {
 
 /// Builds an stsz (sample size) box.
 Uint8List _buildStszBox({required int sampleCount, int uniformSize = 0}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.addAll([0, 0, 0, 0]);
@@ -321,7 +321,7 @@ Uint8List _buildStszBox({required int sampleCount, int uniformSize = 0}) {
 
 /// Builds an stsc (sample to chunk) box.
 Uint8List _buildStscBox({required int sampleCount}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.addAll([0, 0, 0, 0]);
@@ -339,7 +339,7 @@ Uint8List _buildStscBox({required int sampleCount}) {
 
 /// Builds an stco (chunk offset) box.
 Uint8List _buildStcoBox({required int chunkCount}) {
-  final List<int> bytes = [];
+  final bytes = <int>[];
 
   // Version and flags
   bytes.addAll([0, 0, 0, 0]);

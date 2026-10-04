@@ -1,8 +1,0 @@
-# Use shared analysis options from the root
-include: ../analysis_options.yaml
-
-# Relax some rules for the example app
-linter:
-  rules:
-    # Example app doesn't need full documentation
-    public_member_api_docs: false

@@ -55,7 +55,7 @@ void main() {
       });
 
       test('has correct continuity counter', () {
-        final packet0 = TsPacketWriter.writePat(continuityCounter: 0);
+        final packet0 = TsPacketWriter.writePat();
         final packet5 = TsPacketWriter.writePat(continuityCounter: 5);
         final packet15 = TsPacketWriter.writePat(continuityCounter: 15);
 
@@ -95,19 +95,19 @@ void main() {
 
     group('writePmt', () {
       test('writes 188-byte packet', () {
-        final streams = [TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
+        final streams = [const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
         final packet = TsPacketWriter.writePmt(streams: streams);
         expect(packet.length, equals(188));
       });
 
       test('starts with sync byte', () {
-        final streams = [TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
+        final streams = [const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
         final packet = TsPacketWriter.writePmt(streams: streams);
         expect(packet[0], equals(0x47));
       });
 
       test('has correct default PMT PID (0x1000)', () {
-        final streams = [TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
+        final streams = [const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
         final packet = TsPacketWriter.writePmt(streams: streams);
         final pidHigh = packet[1] & 0x1F;
         final pidLow = packet[2];
@@ -116,13 +116,13 @@ void main() {
       });
 
       test('has PMT table_id (0x02)', () {
-        final streams = [TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
+        final streams = [const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
         final packet = TsPacketWriter.writePmt(streams: streams);
         expect(packet[5], equals(0x02));
       });
 
       test('includes video stream entry', () {
-        final streams = [TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
+        final streams = [const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid)];
         final packet = TsPacketWriter.writePmt(streams: streams);
 
         // Find stream type 0x1B (AVC) in the packet
@@ -138,8 +138,8 @@ void main() {
 
       test('includes audio stream entry', () {
         final streams = [
-          TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid),
-          TsStreamInfo(streamType: TsPacketWriter.streamTypeAacAdts, pid: TsPacketWriter.audioPid),
+          const TsStreamInfo(streamType: TsPacketWriter.streamTypeAvc, pid: TsPacketWriter.videoPid),
+          const TsStreamInfo(streamType: TsPacketWriter.streamTypeAacAdts, pid: TsPacketWriter.audioPid),
         ];
         final packet = TsPacketWriter.writePmt(streams: streams);
 
@@ -444,9 +444,7 @@ void main() {
         final header51 = TsPacketWriter.createAdtsHeader(sampleRate: 44100, channelCount: 6, frameLength: 100);
 
         // Channel config is bit 0 of byte 2 + bits 6-7 of byte 3
-        int getChannelConfig(Uint8List h) {
-          return ((h[2] & 0x01) << 2) | ((h[3] & 0xC0) >> 6);
-        }
+        int getChannelConfig(Uint8List h) => ((h[2] & 0x01) << 2) | ((h[3] & 0xC0) >> 6);
 
         expect(getChannelConfig(headerMono), equals(1));
         expect(getChannelConfig(headerStereo), equals(2));

@@ -64,6 +64,7 @@ class PlayerToolbar extends StatelessWidget {
     required this.onShowOrientationLockPicker,
     required this.onFullscreenEnter,
     required this.onFullscreenExit,
+    this.focusNode,
     super.key,
   });
 
@@ -119,19 +120,24 @@ class PlayerToolbar extends StatelessWidget {
   final bool isDesktopPlatform;
 
   /// Callback to show quality picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowQualityPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowQualityPicker;
 
   /// Callback to show subtitle picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowSubtitlePicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowSubtitlePicker;
 
   /// Callback to show audio picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowAudioPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowAudioPicker;
 
   /// Callback to show chapters picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowChaptersPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowChaptersPicker;
 
   /// Callback to show speed picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowSpeedPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowSpeedPicker;
 
   /// Callback to show scaling mode picker.
   final void Function(VideoPlayerTheme theme) onShowScalingModePicker;
@@ -144,6 +150,9 @@ class PlayerToolbar extends StatelessWidget {
 
   /// Callback to exit fullscreen.
   final VoidCallback onFullscreenExit;
+
+  /// Focus node for returning to the toolbar from the seek bar.
+  final FocusNode? focusNode;
 
   static const double _minTitleWidth = 120;
   static const double _actionButtonWidth = 48;
@@ -164,7 +173,8 @@ class PlayerToolbar extends StatelessWidget {
             hasTitle: value.title != null,
           );
 
-          final showDismissButton = controller.options.fullscreenOnly && onDismiss != null;
+          final showDismissButton =
+              controller.options.fullscreenOnly && onDismiss != null;
 
           return Row(
             children: [
@@ -179,13 +189,20 @@ class PlayerToolbar extends StatelessWidget {
                 Expanded(
                   child: Text(
                     value.title!,
-                    style: TextStyle(color: theme.primaryColor, fontSize: 16, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: theme.primaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               if (value.title == null) const Spacer(),
-              ...visibleActions.map((action) => _buildActionWidget(action, value, theme, ctx)),
-              if (overflowActions.isNotEmpty) _buildOverflowMenu(overflowActions, value, theme, ctx),
+              ...visibleActions.map(
+                (action) => _buildActionWidget(action, value, theme, ctx),
+              ),
+              if (overflowActions.isNotEmpty)
+                _buildOverflowMenu(overflowActions, value, theme, ctx),
             ],
           );
         },
@@ -196,7 +213,8 @@ class PlayerToolbar extends StatelessWidget {
   /// Calculates which actions should be visible and which should overflow.
   ///
   /// Returns a tuple of (visibleActions, overflowActions).
-  (List<PlayerToolbarAction>, List<PlayerToolbarAction>) _calculateToolbarActions({
+  (List<PlayerToolbarAction>, List<PlayerToolbarAction>)
+  _calculateToolbarActions({
     required List<PlayerToolbarAction> actions,
     required double availableWidth,
     required bool hasTitle,
@@ -233,8 +251,11 @@ class PlayerToolbar extends StatelessWidget {
     }
 
     // Need overflow menu - reserve space for it
-    final availableForActions = actionsWidth - _actionButtonWidth; // Reserve space for overflow button
-    final maxVisibleActions = (availableForActions / _actionButtonWidth).floor().clamp(0, actions.length);
+    final availableForActions =
+        actionsWidth - _actionButtonWidth; // Reserve space for overflow button
+    final maxVisibleActions = (availableForActions / _actionButtonWidth)
+        .floor()
+        .clamp(0, actions.length);
 
     if (maxVisibleActions >= actions.length) {
       return (actions, <PlayerToolbarAction>[]);
@@ -248,7 +269,8 @@ class PlayerToolbar extends StatelessWidget {
   }
 
   /// Ensures that non-overflowable actions (like casting) stay in the visible list.
-  (List<PlayerToolbarAction>, List<PlayerToolbarAction>) _ensureNonOverflowableVisible(
+  (List<PlayerToolbarAction>, List<PlayerToolbarAction>)
+  _ensureNonOverflowableVisible(
     List<PlayerToolbarAction> visible,
     List<PlayerToolbarAction> overflow,
   ) {
@@ -256,7 +278,9 @@ class PlayerToolbar extends StatelessWidget {
     final mutableOverflow = overflow.toList();
 
     // Find non-overflowable actions in the overflow list
-    final nonOverflowableInOverflow = mutableOverflow.where(VideoToolbarManager.isNonOverflowableAction).toList();
+    final nonOverflowableInOverflow = mutableOverflow
+        .where(VideoToolbarManager.isNonOverflowableAction)
+        .toList();
 
     for (final action in nonOverflowableInOverflow) {
       // Remove from overflow
@@ -283,7 +307,9 @@ class PlayerToolbar extends StatelessWidget {
   List<PlayerToolbarAction> _getVisibleActions(VideoPlayerValue value) {
     // If playerToolbarActions is specified, use that list filtered by visibility
     if (playerToolbarActions != null) {
-      return playerToolbarActions!.where((action) => _isActionVisible(action, value)).toList();
+      return playerToolbarActions!
+          .where((action) => _isActionVisible(action, value))
+          .toList();
     }
 
     // Default behavior: build list using VideoToolbarManager
@@ -307,9 +333,11 @@ class PlayerToolbar extends StatelessWidget {
         qualityTrackCount: value.qualityTracks.length,
         hasChapters: value.hasChapters,
         isCasting: value.isCasting,
-        isBackgroundPlaybackSupported: (controlsState as dynamic).isBackgroundPlaybackSupported as bool?,
+        isBackgroundPlaybackSupported:
+            (controlsState as dynamic).isBackgroundPlaybackSupported as bool?,
         isPipAvailable: (controlsState as dynamic).isPipAvailable as bool?,
-        isCastingSupported: (controlsState as dynamic).isCastingSupported as bool?,
+        isCastingSupported:
+            (controlsState as dynamic).isCastingSupported as bool?,
         isFullscreen: value.isFullscreen,
         isDesktopPlatform: isDesktopPlatform,
       ),
@@ -317,34 +345,37 @@ class PlayerToolbar extends StatelessWidget {
   }
 
   /// Checks if an action should be visible based on its conditions.
-  bool _isActionVisible(PlayerToolbarAction action, VideoPlayerValue value) => VideoToolbarManager.shouldShowAction(
-    action,
-    config: ToolbarConfig(
-      showSubtitleButton: showSubtitleButton,
-      showAudioButton: showAudioButton,
-      showQualityButton: showQualityButton,
-      showSpeedButton: showSpeedButton,
-      showScalingModeButton: showScalingModeButton,
-      showBackgroundPlaybackButton: showBackgroundPlaybackButton,
-      showPipButton: showPipButton && controller.options.allowPip,
-      showOrientationLockButton: showOrientationLockButton,
-      showFullscreenButton: showFullscreenButton,
-      fullscreenOnly: controller.options.fullscreenOnly,
-    ),
-    state: ToolbarState(
-      hasPlaylist: value.playlist != null,
-      hasSubtitleTracks: value.subtitleTracks.isNotEmpty,
-      audioTrackCount: value.audioTracks.length,
-      qualityTrackCount: value.qualityTracks.length,
-      hasChapters: value.hasChapters,
-      isCasting: value.isCasting,
-      isBackgroundPlaybackSupported: (controlsState as dynamic).isBackgroundPlaybackSupported as bool,
-      isPipAvailable: (controlsState as dynamic).isPipAvailable as bool,
-      isCastingSupported: (controlsState as dynamic).isCastingSupported as bool,
-      isFullscreen: value.isFullscreen,
-      isDesktopPlatform: isDesktopPlatform,
-    ),
-  );
+  bool _isActionVisible(PlayerToolbarAction action, VideoPlayerValue value) =>
+      VideoToolbarManager.shouldShowAction(
+        action,
+        config: ToolbarConfig(
+          showSubtitleButton: showSubtitleButton,
+          showAudioButton: showAudioButton,
+          showQualityButton: showQualityButton,
+          showSpeedButton: showSpeedButton,
+          showScalingModeButton: showScalingModeButton,
+          showBackgroundPlaybackButton: showBackgroundPlaybackButton,
+          showPipButton: showPipButton && controller.options.allowPip,
+          showOrientationLockButton: showOrientationLockButton,
+          showFullscreenButton: showFullscreenButton,
+          fullscreenOnly: controller.options.fullscreenOnly,
+        ),
+        state: ToolbarState(
+          hasPlaylist: value.playlist != null,
+          hasSubtitleTracks: value.subtitleTracks.isNotEmpty,
+          audioTrackCount: value.audioTracks.length,
+          qualityTrackCount: value.qualityTracks.length,
+          hasChapters: value.hasChapters,
+          isCasting: value.isCasting,
+          isBackgroundPlaybackSupported:
+              (controlsState as dynamic).isBackgroundPlaybackSupported as bool,
+          isPipAvailable: (controlsState as dynamic).isPipAvailable as bool,
+          isCastingSupported:
+              (controlsState as dynamic).isCastingSupported as bool,
+          isFullscreen: value.isFullscreen,
+          isDesktopPlatform: isDesktopPlatform,
+        ),
+      );
 
   /// Builds the widget for a specific action.
   Widget _buildActionWidget(
@@ -358,7 +389,8 @@ class PlayerToolbar extends StatelessWidget {
         return ShuffleButton(
           theme: theme,
           isShuffled: value.isShuffled,
-          onPressed: () => controller.setPlaylistShuffle(enabled: !value.isShuffled),
+          onPressed: () =>
+              controller.setPlaylistShuffle(enabled: !value.isShuffled),
         );
       case PlayerToolbarAction.repeatMode:
         return RepeatModeButton(
@@ -381,7 +413,10 @@ class PlayerToolbar extends StatelessWidget {
           onPressed: () => onShowSubtitlePicker(context, theme),
         );
       case PlayerToolbarAction.audio:
-        return AudioButton(theme: theme, onPressed: () => onShowAudioPicker(context, theme));
+        return AudioButton(
+          theme: theme,
+          onPressed: () => onShowAudioPicker(context, theme),
+        );
       case PlayerToolbarAction.chapters:
         final currentChapter = value.currentChapter;
         return ChaptersButton(
@@ -391,10 +426,17 @@ class PlayerToolbar extends StatelessWidget {
         );
       case PlayerToolbarAction.quality:
         final selectedQuality = value.selectedQualityTrack;
-        final label = (selectedQuality?.isAuto ?? true) || selectedQuality == null
+        final label =
+            (selectedQuality?.isAuto ?? true) || selectedQuality == null
             ? 'Auto'
-            : selectedQuality.displayLabel.split(' ').first; // e.g., "1080p" from "1080p (5.0 Mbps)"
-        return QualityButton(theme: theme, qualityLabel: label, onPressed: () => onShowQualityPicker(context, theme));
+            : selectedQuality.displayLabel
+                  .split(' ')
+                  .first; // e.g., "1080p" from "1080p (5.0 Mbps)"
+        return QualityButton(
+          theme: theme,
+          qualityLabel: label,
+          onPressed: () => onShowQualityPicker(context, theme),
+        );
       case PlayerToolbarAction.speed:
         return SpeedButton(
           theme: theme,
@@ -402,16 +444,23 @@ class PlayerToolbar extends StatelessWidget {
           onPressed: () => onShowSpeedPicker(context, theme),
         );
       case PlayerToolbarAction.scalingMode:
-        return ScalingModeButton(theme: theme, onPressed: () => onShowScalingModePicker(theme));
+        return ScalingModeButton(
+          theme: theme,
+          onPressed: () => onShowScalingModePicker(theme),
+        );
       case PlayerToolbarAction.backgroundPlayback:
         final isEnabled = value.isBackgroundPlaybackEnabled;
         return BackgroundPlaybackButton(
           theme: theme,
           isEnabled: isEnabled,
-          onPressed: () => unawaited(controller.setBackgroundPlayback(enabled: !isEnabled)),
+          onPressed: () =>
+              unawaited(controller.setBackgroundPlayback(enabled: !isEnabled)),
         );
       case PlayerToolbarAction.pip:
-        return PipButton(theme: theme, onPressed: () => unawaited(controller.enterPip()));
+        return PipButton(
+          theme: theme,
+          onPressed: () => unawaited(controller.enterPip()),
+        );
       case PlayerToolbarAction.casting:
         return CastingButton(theme: theme, isCasting: value.isCasting);
       case PlayerToolbarAction.orientationLock:
@@ -427,6 +476,7 @@ class PlayerToolbar extends StatelessWidget {
           isFullscreen: isFullscreen,
           onEnter: onFullscreenEnter,
           onExit: onFullscreenExit,
+          focusNode: focusNode,
         );
     }
   }
@@ -440,16 +490,24 @@ class PlayerToolbar extends StatelessWidget {
   ) => PopupMenuButton<PlayerToolbarAction>(
     icon: Icon(Icons.more_vert, color: theme.primaryColor, size: 20),
     color: theme.backgroundColor,
-    onSelected: (action) => _handleOverflowAction(action, value, theme, context),
+    onSelected: (action) =>
+        _handleOverflowAction(action, value, theme, context),
     itemBuilder: (ctx) => actions
         .map(
           (action) => PopupMenuItem<PlayerToolbarAction>(
             value: action,
             child: Row(
               children: [
-                Icon(_getActionIcon(action, value), color: theme.primaryColor, size: 20),
+                Icon(
+                  _getActionIcon(action, value),
+                  color: theme.primaryColor,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
-                Text(_getActionLabel(action), style: TextStyle(color: theme.primaryColor)),
+                Text(
+                  _getActionLabel(action),
+                  style: TextStyle(color: theme.primaryColor),
+                ),
               ],
             ),
           ),
@@ -487,7 +545,11 @@ class PlayerToolbar extends StatelessWidget {
       case PlayerToolbarAction.scalingMode:
         onShowScalingModePicker(theme);
       case PlayerToolbarAction.backgroundPlayback:
-        unawaited(controller.setBackgroundPlayback(enabled: !value.isBackgroundPlaybackEnabled));
+        unawaited(
+          controller.setBackgroundPlayback(
+            enabled: !value.isBackgroundPlaybackEnabled,
+          ),
+        );
       case PlayerToolbarAction.pip:
         unawaited(controller.enterPip());
       case PlayerToolbarAction.casting:
@@ -508,17 +570,19 @@ class PlayerToolbar extends StatelessWidget {
   }
 
   /// Returns the label for an action (used in overflow menu).
-  String _getActionLabel(PlayerToolbarAction action) => VideoToolbarManager.getActionLabel(action);
+  String _getActionLabel(PlayerToolbarAction action) =>
+      VideoToolbarManager.getActionLabel(action);
 
   /// Returns the icon for an action (used in overflow menu).
-  IconData _getActionIcon(PlayerToolbarAction action, VideoPlayerValue value) => VideoToolbarManager.getActionIcon(
-    action,
-    isShuffled: value.isShuffled,
-    playlistRepeatMode: value.playlistRepeatMode,
-    hasSelectedSubtitle: value.selectedSubtitleTrack != null,
-    isBackgroundPlaybackEnabled: value.isBackgroundPlaybackEnabled,
-    isCasting: value.isCasting,
-    isOrientationLocked: value.isOrientationLocked,
-    isFullscreen: value.isFullscreen,
-  );
+  IconData _getActionIcon(PlayerToolbarAction action, VideoPlayerValue value) =>
+      VideoToolbarManager.getActionIcon(
+        action,
+        isShuffled: value.isShuffled,
+        playlistRepeatMode: value.playlistRepeatMode,
+        hasSelectedSubtitle: value.selectedSubtitleTrack != null,
+        isBackgroundPlaybackEnabled: value.isBackgroundPlaybackEnabled,
+        isCasting: value.isCasting,
+        isOrientationLocked: value.isOrientationLocked,
+        isFullscreen: value.isFullscreen,
+      );
 }

@@ -259,7 +259,7 @@ class _VideoPlayerGestureDetectorState extends State<VideoPlayerGestureDetector>
     // Initialize gesture managers
     _tapManager = TapGestureManager(
       getControlsVisible: () => _controlsVisible,
-      setControlsVisible: ({required bool visible, bool instantly = false}) {
+      setControlsVisible: ({required visible, bool instantly = false}) {
         setState(() => _controlsVisible = visible);
         widget.onControlsVisibilityChanged?.call(visible, instantly: instantly);
       },

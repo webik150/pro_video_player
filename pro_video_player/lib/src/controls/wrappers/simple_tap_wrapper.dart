@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show KeyDownEvent, KeyRepeatEvent, LogicalKeyboardKey;
 
 import '../../pro_video_player_controller.dart';
 import '../../video_controls_controller.dart';
@@ -11,7 +13,12 @@ import '../../video_controls_controller.dart';
 /// - Used when gestures are disabled or in compact mode
 class SimpleTapWrapper extends StatelessWidget {
   /// Creates a simple tap wrapper.
-  const SimpleTapWrapper({required this.child, required this.controller, required this.controlsController, super.key});
+  const SimpleTapWrapper({
+    required this.child,
+    required this.controller,
+    required this.controlsController,
+    super.key,
+  });
 
   /// The controls content to wrap.
   final Widget child;
@@ -21,6 +28,20 @@ class SimpleTapWrapper extends StatelessWidget {
 
   /// The controls controller.
   final VideoControlsController controlsController;
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+        (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+            event.logicalKey == LogicalKeyboardKey.arrowDown ||
+            event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+            event.logicalKey == LogicalKeyboardKey.arrowRight)) {
+      controlsController
+        ..showControls()
+        ..resetHideTimer();
+    }
+
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -40,6 +61,6 @@ class SimpleTapWrapper extends StatelessWidget {
         controlsController.resetHideTimer();
       }
     },
-    child: child,
+    child: Focus(onKeyEvent: _handleKeyEvent, child: child),
   );
 }

@@ -11,7 +11,9 @@ import 'package:pro_video_player_platform_interface/pro_video_player_platform_in
 import '../shared/test_constants.dart';
 import '../shared/test_helpers.dart';
 
-class MockProVideoPlayerPlatform extends Mock with MockPlatformInterfaceMixin implements ProVideoPlayerPlatform {}
+class MockProVideoPlayerPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements ProVideoPlayerPlatform {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +30,11 @@ void main() {
     registerFallbackValue(VideoQualityTrack.auto);
 
     // Mock SystemChrome calls for fullscreen tests
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (methodCall) async => null,
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          SystemChannels.platform,
+          (methodCall) async => null,
+        );
   });
 
   setUp(() {
@@ -46,19 +49,33 @@ void main() {
       ),
     ).thenAnswer((_) async => 1);
 
-    when(() => mockPlatform.events(any())).thenAnswer((_) => eventController.stream);
+    when(
+      () => mockPlatform.events(any()),
+    ).thenAnswer((_) => eventController.stream);
     when(() => mockPlatform.dispose(any())).thenAnswer((_) async {});
     when(() => mockPlatform.play(any())).thenAnswer((_) async {});
     when(() => mockPlatform.pause(any())).thenAnswer((_) async {});
     when(() => mockPlatform.seekTo(any(), any())).thenAnswer((_) async {});
-    when(() => mockPlatform.enterFullscreen(any())).thenAnswer((_) async => true);
+    when(
+      () => mockPlatform.enterFullscreen(any()),
+    ).thenAnswer((_) async => true);
     when(() => mockPlatform.exitFullscreen(any())).thenAnswer((_) async {});
-    when(() => mockPlatform.setPlaybackSpeed(any(), any())).thenAnswer((_) async {});
-    when(() => mockPlatform.setSubtitleTrack(any(), any())).thenAnswer((_) async {});
+    when(
+      () => mockPlatform.setPlaybackSpeed(any(), any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockPlatform.setSubtitleTrack(any(), any()),
+    ).thenAnswer((_) async {});
     when(() => mockPlatform.isPipSupported()).thenAnswer((_) async => true);
-    when(() => mockPlatform.enterPip(any(), options: any(named: 'options'))).thenAnswer((_) async => true);
-    when(() => mockPlatform.isBackgroundPlaybackSupported()).thenAnswer((_) async => false);
-    when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => false);
+    when(
+      () => mockPlatform.enterPip(any(), options: any(named: 'options')),
+    ).thenAnswer((_) async => true);
+    when(
+      () => mockPlatform.isBackgroundPlaybackSupported(),
+    ).thenAnswer((_) async => false);
+    when(
+      () => mockPlatform.isCastingSupported(),
+    ).thenAnswer((_) async => false);
   });
 
   tearDown(() async {
@@ -70,7 +87,9 @@ void main() {
     group('skip controls', () {
       testWidgets('renders skip backward button by default', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -87,7 +106,9 @@ void main() {
 
       testWidgets('renders skip forward button by default', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -102,9 +123,13 @@ void main() {
         expect(find.byIcon(Icons.forward_10), findsOneWidget);
       });
 
-      testWidgets('calls seekBackward when skip backward button is tapped', (tester) async {
+      testWidgets('calls seekBackward when skip backward button is tapped', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(TestMetadata.duration))
@@ -125,12 +150,18 @@ void main() {
         await tester.pump();
 
         // Default skip duration is 10 seconds, so seeking from 2:00 to 1:50
-        verify(() => mockPlatform.seekTo(1, const Duration(minutes: 1, seconds: 50))).called(1);
+        verify(
+          () => mockPlatform.seekTo(1, const Duration(minutes: 1, seconds: 50)),
+        ).called(1);
       });
 
-      testWidgets('calls seekForward when skip forward button is tapped', (tester) async {
+      testWidgets('calls seekForward when skip forward button is tapped', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(TestMetadata.duration))
@@ -151,30 +182,39 @@ void main() {
         await tester.pump();
 
         // Default skip duration is 10 seconds, so seeking from 2:00 to 2:10
-        verify(() => mockPlatform.seekTo(1, const Duration(minutes: 2, seconds: 10))).called(1);
+        verify(
+          () => mockPlatform.seekTo(1, const Duration(minutes: 2, seconds: 10)),
+        ).called(1);
       });
 
-      testWidgets('does not render skip buttons when showSkipButtons is false', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'does not render skip buttons when showSkipButtons is false',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            VideoPlayerControls(
-              controller: controller,
-              buttonsConfig: const ButtonsConfig(showSkipButtons: false),
-              gestureConfig: const GestureConfig(enableGestures: false),
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                controller: controller,
+                buttonsConfig: const ButtonsConfig(showSkipButtons: false),
+                gestureConfig: const GestureConfig(enableGestures: false),
+              ),
             ),
-          ),
-        );
+          );
 
-        expect(find.byIcon(Icons.replay_10), findsNothing);
-        expect(find.byIcon(Icons.forward_10), findsNothing);
-      });
+          expect(find.byIcon(Icons.replay_10), findsNothing);
+          expect(find.byIcon(Icons.forward_10), findsNothing);
+        },
+      );
 
       testWidgets('uses custom skip duration', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(TestMetadata.duration))
@@ -184,9 +224,13 @@ void main() {
         await tester.pumpWidget(
           buildTestWidget(
             VideoPlayerControls(
-              forceMobileLayout: true, // Skip buttons are in mobile BottomControlsBar
+              forceMobileLayout:
+                  true, // Skip buttons are in mobile BottomControlsBar
               controller: controller,
-              gestureConfig: const GestureConfig(skipDuration: Duration(seconds: 30), enableGestures: false),
+              gestureConfig: const GestureConfig(
+                skipDuration: Duration(seconds: 30),
+                enableGestures: false,
+              ),
               autoOverflowActions: false,
             ),
           ),
@@ -197,12 +241,18 @@ void main() {
         await tester.pump();
 
         // Custom skip duration of 30 seconds, so seeking from 2:00 to 2:30
-        verify(() => mockPlatform.seekTo(1, const Duration(minutes: 2, seconds: 30))).called(1);
+        verify(
+          () => mockPlatform.seekTo(1, const Duration(minutes: 2, seconds: 30)),
+        ).called(1);
       });
 
-      testWidgets('shows correct skip icons for different durations', (tester) async {
+      testWidgets('shows correct skip icons for different durations', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         // Test 5 second skip
         await tester.pumpWidget(
@@ -210,7 +260,10 @@ void main() {
             VideoPlayerControls(
               forceMobileLayout: true,
               controller: controller,
-              gestureConfig: const GestureConfig(skipDuration: Duration(seconds: 5), enableGestures: false),
+              gestureConfig: const GestureConfig(
+                skipDuration: Duration(seconds: 5),
+                enableGestures: false,
+              ),
               autoOverflowActions: false,
             ),
           ),
@@ -225,7 +278,9 @@ void main() {
     group('playback speed', () {
       testWidgets('renders speed button showing current speed', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -239,12 +294,19 @@ void main() {
         );
         await tester.pump(); // Allow widget to build
 
-        expect(find.text('1x'), findsOneWidget); // Speed formats as "1x" not "1.0x" (trailing zeros removed)
+        expect(
+          find.text('1x'),
+          findsOneWidget,
+        ); // Speed formats as "1x" not "1.0x" (trailing zeros removed)
       });
 
-      testWidgets('shows updated speed when playback speed changes', (tester) async {
+      testWidgets('shows updated speed when playback speed changes', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -264,14 +326,26 @@ void main() {
 
       // Skip: pumpAndSettle() hangs with modals (bottom sheets), and pump() doesn't render modal content.
       // Modal functionality is verified via integration tests. See contributing/testing-guide.md "Common Test Pitfalls #1"
-      testWidgets('opens speed picker when speed button is tapped', (tester) async {}, skip: true);
+      testWidgets(
+        'opens speed picker when speed button is tapped',
+        (tester) async {},
+        skip: true,
+      );
 
       // Skip: pumpAndSettle() hangs with modals (bottom sheets). See contributing/testing-guide.md "Common Test Pitfalls #1"
-      testWidgets('calls setPlaybackSpeed when speed is selected', (tester) async {}, skip: true);
+      testWidgets(
+        'calls setPlaybackSpeed when speed is selected',
+        (tester) async {},
+        skip: true,
+      );
 
-      testWidgets('does not show speed button when showSpeedButton is false', (tester) async {
+      testWidgets('does not show speed button when showSpeedButton is false', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -284,35 +358,51 @@ void main() {
         );
         await tester.pump();
 
-        expect(find.text('1x'), findsNothing); // Speed formats as "1x" not "1.0x"
+        expect(
+          find.text('1x'),
+          findsNothing,
+        ); // Speed formats as "1x" not "1.0x"
       });
 
       // Skip: pumpAndSettle() hangs with modals (bottom sheets). See contributing/testing-guide.md "Common Test Pitfalls #1"
-      testWidgets('uses custom speed options when provided', (tester) async {}, skip: true);
+      testWidgets(
+        'uses custom speed options when provided',
+        (tester) async {},
+        skip: true,
+      );
     });
 
     group('subtitles', () {
-      testWidgets('does not show subtitle button when no subtitle tracks available', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'does not show subtitle button when no subtitle tracks available',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            VideoPlayerControls(
-              forceMobileLayout: true,
-              controller: controller,
-              gestureConfig: const GestureConfig(enableGestures: false),
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                forceMobileLayout: true,
+                controller: controller,
+                gestureConfig: const GestureConfig(enableGestures: false),
+              ),
             ),
-          ),
-        );
+          );
 
-        expect(find.byIcon(Icons.closed_caption), findsNothing);
-        expect(find.byIcon(Icons.closed_caption_off), findsNothing);
-      });
+          expect(find.byIcon(Icons.closed_caption), findsNothing);
+          expect(find.byIcon(Icons.closed_caption_off), findsNothing);
+        },
+      );
 
-      testWidgets('shows subtitle button when subtitle tracks are available', (tester) async {
+      testWidgets('shows subtitle button when subtitle tracks are available', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController.add(
           const SubtitleTracksChangedEvent([
@@ -335,13 +425,25 @@ void main() {
         expect(find.byIcon(Icons.closed_caption_off), findsOneWidget);
       });
 
-      testWidgets('shows filled icon when subtitles are enabled', (tester) async {
+      testWidgets('shows filled icon when subtitles are enabled', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
-          ..add(const SubtitleTracksChangedEvent([SubtitleTrack(id: '1', label: 'English', language: 'en')]))
-          ..add(const SelectedSubtitleChangedEvent(SubtitleTrack(id: '1', label: 'English', language: 'en')));
+          ..add(
+            const SubtitleTracksChangedEvent([
+              SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            ]),
+          )
+          ..add(
+            const SelectedSubtitleChangedEvent(
+              SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            ),
+          );
         await tester.pump();
 
         await tester.pumpWidget(
@@ -357,9 +459,13 @@ void main() {
         expect(find.byIcon(Icons.closed_caption), findsOneWidget);
       });
 
-      testWidgets('opens subtitle picker when subtitle button is tapped', (tester) async {
+      testWidgets('opens subtitle picker when subtitle button is tapped', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController.add(
           const SubtitleTracksChangedEvent([
@@ -388,13 +494,24 @@ void main() {
         expect(find.text('Spanish'), findsOneWidget);
       });
 
-      testWidgets('calls setSubtitleTrack when track is selected', (tester) async {
+      testWidgets('calls setSubtitleTrack when track is selected', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        const englishTrack = SubtitleTrack(id: '1', label: 'English', language: 'en');
+        const englishTrack = SubtitleTrack(
+          id: '1',
+          label: 'English',
+          language: 'en',
+        );
         eventController.add(
-          const SubtitleTracksChangedEvent([englishTrack, SubtitleTrack(id: '2', label: 'Spanish', language: 'es')]),
+          const SubtitleTracksChangedEvent([
+            englishTrack,
+            SubtitleTrack(id: '2', label: 'Spanish', language: 'es'),
+          ]),
         );
         await tester.pump();
 
@@ -417,11 +534,19 @@ void main() {
         verify(() => mockPlatform.setSubtitleTrack(1, englishTrack)).called(1);
       });
 
-      testWidgets('calls setSubtitleTrack with null when Off is selected', (tester) async {
+      testWidgets('calls setSubtitleTrack with null when Off is selected', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        const englishTrack = SubtitleTrack(id: '1', label: 'English', language: 'en');
+        const englishTrack = SubtitleTrack(
+          id: '1',
+          label: 'English',
+          language: 'en',
+        );
         eventController
           ..add(const SubtitleTracksChangedEvent([englishTrack]))
           ..add(const SelectedSubtitleChangedEvent(englishTrack));
@@ -446,28 +571,35 @@ void main() {
         verify(() => mockPlatform.setSubtitleTrack(1, null)).called(1);
       });
 
-      testWidgets('does not show subtitle button when showSubtitleButton is false', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'does not show subtitle button when showSubtitleButton is false',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        eventController.add(
-          const SubtitleTracksChangedEvent([SubtitleTrack(id: '1', label: 'English', language: 'en')]),
-        );
-        await tester.pump();
+          eventController.add(
+            const SubtitleTracksChangedEvent([
+              SubtitleTrack(id: '1', label: 'English', language: 'en'),
+            ]),
+          );
+          await tester.pump();
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            VideoPlayerControls(
-              controller: controller,
-              buttonsConfig: const ButtonsConfig(showSubtitleButton: false),
-              gestureConfig: const GestureConfig(enableGestures: false),
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                controller: controller,
+                buttonsConfig: const ButtonsConfig(showSubtitleButton: false),
+                gestureConfig: const GestureConfig(enableGestures: false),
+              ),
             ),
-          ),
-        );
+          );
 
-        expect(find.byIcon(Icons.closed_caption), findsNothing);
-        expect(find.byIcon(Icons.closed_caption_off), findsNothing);
-      });
+          expect(find.byIcon(Icons.closed_caption), findsNothing);
+          expect(find.byIcon(Icons.closed_caption_off), findsNothing);
+        },
+      );
     });
 
     group('picture-in-picture', () {
@@ -475,7 +607,9 @@ void main() {
         when(() => mockPlatform.isPipSupported()).thenAnswer((_) async => true);
 
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -492,11 +626,17 @@ void main() {
         expect(find.byIcon(Icons.picture_in_picture_alt), findsOneWidget);
       });
 
-      testWidgets('does not show PiP button when PiP is not supported', (tester) async {
-        when(() => mockPlatform.isPipSupported()).thenAnswer((_) async => false);
+      testWidgets('does not show PiP button when PiP is not supported', (
+        tester,
+      ) async {
+        when(
+          () => mockPlatform.isPipSupported(),
+        ).thenAnswer((_) async => false);
 
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -504,7 +644,8 @@ void main() {
               forceMobileLayout: true,
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              testIsPipAvailable: false, // Explicitly inject false to bypass cache pollution
+              testIsPipAvailable:
+                  false, // Explicitly inject false to bypass cache pollution
             ),
           ),
         );
@@ -518,7 +659,9 @@ void main() {
         when(() => mockPlatform.enterPip(any())).thenAnswer((_) async => true);
 
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -539,9 +682,13 @@ void main() {
         verify(() => mockPlatform.enterPip(1)).called(1);
       });
 
-      testWidgets('does not show PiP button when showPipButton is false', (tester) async {
+      testWidgets('does not show PiP button when showPipButton is false', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -557,7 +704,9 @@ void main() {
         expect(find.byIcon(Icons.picture_in_picture_alt), findsNothing);
       });
 
-      testWidgets('does not show PiP button when allowPip option is false', (tester) async {
+      testWidgets('does not show PiP button when allowPip option is false', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
         await controller.initialize(
           source: const VideoSource.network(TestMedia.networkUrl),
@@ -579,12 +728,221 @@ void main() {
       });
     });
 
+    group('TV remote keyboard', () {
+      testWidgets('focuses the playback button when controls appear', (
+        tester,
+      ) async {
+        final controller = ProVideoPlayerController();
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.playing),
+        );
+        await tester.pump();
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            VideoPlayerControls(
+              forceMobileLayout: true,
+              controller: controller,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          Focus.of(tester.element(find.byIcon(Icons.pause))).hasFocus,
+          isTrue,
+        );
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+
+        verify(() => mockPlatform.pause(any())).called(1);
+      });
+
+      testWidgets('Down focuses the timeline from the controls overlay', (
+        tester,
+      ) async {
+        final controller = ProVideoPlayerController();
+        FocusNode? seekBarFocusNode;
+        final inputFocusNode = FocusNode();
+        addTearDown(inputFocusNode.dispose);
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            VideoPlayerControls(
+              forceMobileLayout: true,
+              controller: controller,
+              gestureConfig: const GestureConfig(enableGestures: false),
+              onSeekBarFocusNodeCreated: (focusNode) {
+                seekBarFocusNode = focusNode;
+              },
+            ),
+          ),
+        );
+
+        final controlsFocus = find.byKey(
+          const ValueKey('video-controls-navigation-focus'),
+        );
+        final result = tester.widget<Focus>(controlsFocus).onKeyEvent!(
+          inputFocusNode,
+          const KeyDownEvent(
+            logicalKey: LogicalKeyboardKey.arrowDown,
+            physicalKey: PhysicalKeyboardKey.arrowDown,
+            timeStamp: Duration.zero,
+          ),
+        );
+
+        expect(result, KeyEventResult.handled);
+        await tester.pump();
+        expect(seekBarFocusNode!.hasFocus, isTrue);
+      });
+
+      testWidgets('Down moves focus from the timeline to playback controls', (
+        tester,
+      ) async {
+        final controller = ProVideoPlayerController();
+        FocusNode? seekBarFocusNode;
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.playing),
+        );
+        await tester.pump();
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            VideoPlayerControls(
+              forceMobileLayout: true,
+              controller: controller,
+              gestureConfig: const GestureConfig(enableGestures: false),
+              onSeekBarFocusNodeCreated: (focusNode) {
+                seekBarFocusNode = focusNode;
+              },
+            ),
+          ),
+        );
+
+        seekBarFocusNode!.requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+
+        expect(seekBarFocusNode!.hasFocus, isFalse);
+        expect(
+          Focus.of(tester.element(find.byIcon(Icons.pause))).hasFocus,
+          isTrue,
+        );
+      });
+
+      testWidgets('Up moves focus from the timeline to toolbar controls', (
+        tester,
+      ) async {
+        final controller = ProVideoPlayerController();
+        FocusNode? seekBarFocusNode;
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            VideoPlayerControls(
+              forceMobileLayout: true,
+              controller: controller,
+              buttonsConfig: const ButtonsConfig(
+                showPipButton: false,
+                showBackgroundPlaybackButton: false,
+                showSubtitleButton: false,
+                showAudioButton: false,
+                showQualityButton: false,
+                showSpeedButton: false,
+                showScalingModeButton: false,
+                showOrientationLockButton: false,
+              ),
+              gestureConfig: const GestureConfig(enableGestures: false),
+              onSeekBarFocusNodeCreated: (focusNode) {
+                seekBarFocusNode = focusNode;
+              },
+            ),
+          ),
+        );
+
+        seekBarFocusNode!.requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        await tester.pump();
+
+        expect(seekBarFocusNode!.hasFocus, isFalse);
+        expect(
+          Focus.of(tester.element(find.byIcon(Icons.fullscreen))).hasFocus,
+          isTrue,
+        );
+      });
+
+      testWidgets('select pauses playback from the focused play/pause button', (
+        tester,
+      ) async {
+        final controller = ProVideoPlayerController();
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.playing),
+        );
+        await tester.pump();
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            VideoPlayerControls(
+              forceMobileLayout: true,
+              controller: controller,
+              gestureConfig: const GestureConfig(enableGestures: false),
+            ),
+          ),
+        );
+
+        final playPauseFocus = find
+            .ancestor(
+              of: find.byIcon(Icons.pause),
+              matching: find.byWidgetPredicate(
+                (widget) => widget is Focus && widget.onKeyEvent != null,
+              ),
+            )
+            .first;
+        final focusNode = FocusNode();
+        addTearDown(focusNode.dispose);
+        final keyResult = tester.widget<Focus>(playPauseFocus).onKeyEvent!(
+          focusNode,
+          const KeyDownEvent(
+            logicalKey: LogicalKeyboardKey.select,
+            physicalKey: PhysicalKeyboardKey.select,
+            timeStamp: Duration.zero,
+          ),
+        );
+
+        expect(keyResult, KeyEventResult.handled);
+        await tester.pump();
+
+        verify(() => mockPlatform.pause(any())).called(1);
+      });
+    });
+
     group('auto-hide', () {
       testWidgets('hides controls after timeout when playing', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        eventController.add(const PlaybackStateChangedEvent(PlaybackState.playing));
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.playing),
+        );
         await tester.pump();
 
         // Disable gestures to simplify testing of auto-hide behavior
@@ -592,7 +950,9 @@ void main() {
           buildTestWidget(
             VideoPlayerControls(
               controller: controller,
-              behaviorConfig: const ControlsBehaviorConfig(autoHideDuration: Duration(seconds: 1)),
+              behaviorConfig: const ControlsBehaviorConfig(
+                autoHideDuration: Duration(seconds: 1),
+              ),
               gestureConfig: const GestureConfig(enableGestures: false),
             ),
           ),
@@ -606,15 +966,23 @@ void main() {
 
         // Controls should be hidden (opacity 0)
         expect(find.byType(AnimatedOpacity), findsOneWidget);
-        final animatedOpacity = tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity));
+        final animatedOpacity = tester.widget<AnimatedOpacity>(
+          find.byType(AnimatedOpacity),
+        );
         expect(animatedOpacity.opacity, equals(0.0));
       });
 
-      testWidgets('shows controls when tapped while hidden with gestures enabled', (tester) async {
+      testWidgets('shows controls when tapped while hidden with gestures enabled', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        eventController.add(const PlaybackStateChangedEvent(PlaybackState.playing));
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.playing),
+        );
         await tester.pump();
 
         await tester.pumpWidget(
@@ -644,9 +1012,13 @@ void main() {
 
       testWidgets('does not auto-hide when paused', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        eventController.add(const PlaybackStateChangedEvent(PlaybackState.paused));
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.paused),
+        );
         await tester.pump();
 
         // Disable gestures to simplify testing
@@ -654,7 +1026,9 @@ void main() {
           buildTestWidget(
             VideoPlayerControls(
               controller: controller,
-              behaviorConfig: const ControlsBehaviorConfig(autoHideDuration: Duration(seconds: 1)),
+              behaviorConfig: const ControlsBehaviorConfig(
+                autoHideDuration: Duration(seconds: 1),
+              ),
               gestureConfig: const GestureConfig(enableGestures: false),
             ),
           ),
@@ -664,7 +1038,9 @@ void main() {
         await tester.pump(TestDelays.playbackManagerTimer);
 
         // Controls should still be visible
-        final animatedOpacity = tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity));
+        final animatedOpacity = tester.widget<AnimatedOpacity>(
+          find.byType(AnimatedOpacity),
+        );
         expect(animatedOpacity.opacity, equals(1.0));
       });
     });
@@ -672,7 +1048,9 @@ void main() {
     group('Live Scrubbing', () {
       testWidgets('throttles seek calls during live scrubbing', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.file(TestMedia.filePath));
+        await controller.initialize(
+          source: const VideoSource.file(TestMedia.filePath),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -684,7 +1062,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.always),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.always,
+              ),
             ),
           ),
         );
@@ -704,7 +1084,9 @@ void main() {
 
       testWidgets('uses adaptive mode by default', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -735,9 +1117,13 @@ void main() {
     });
 
     group('Live Scrubbing Modes', () {
-      testWidgets('localOnly mode - enables for local file sources', (tester) async {
+      testWidgets('localOnly mode - enables for local file sources', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.file(TestMedia.filePath));
+        await controller.initialize(
+          source: const VideoSource.file(TestMedia.filePath),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -749,7 +1135,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.localOnly),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.localOnly,
+              ),
             ),
           ),
         );
@@ -762,9 +1150,13 @@ void main() {
         verify(() => mockPlatform.seekTo(1, any())).called(greaterThan(1));
       });
 
-      testWidgets('localOnly mode - disables for network sources', (tester) async {
+      testWidgets('localOnly mode - disables for network sources', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -776,7 +1168,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.localOnly),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.localOnly,
+              ),
             ),
           ),
         );
@@ -791,7 +1185,9 @@ void main() {
 
       testWidgets('localOnly mode - enables for asset sources', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.asset(TestMedia.assetPath));
+        await controller.initialize(
+          source: const VideoSource.asset(TestMedia.assetPath),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -803,7 +1199,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.localOnly),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.localOnly,
+              ),
             ),
           ),
         );
@@ -818,7 +1216,9 @@ void main() {
 
       testWidgets('adaptive mode - enables for local files', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.file(TestMedia.filePath));
+        await controller.initialize(
+          source: const VideoSource.file(TestMedia.filePath),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -843,38 +1243,49 @@ void main() {
         verify(() => mockPlatform.seekTo(1, any())).called(greaterThan(1));
       });
 
-      testWidgets('adaptive mode - enables for buffered portions of network videos', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'adaptive mode - enables for buffered portions of network videos',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        eventController
-          ..add(const DurationChangedEvent(Duration(minutes: 10)))
-          ..add(const PositionChangedEvent(Duration(minutes: 2)))
-          ..add(const BufferedPositionChangedEvent(Duration(minutes: 8))); // Buffered to 8 minutes
-        await tester.pump();
+          eventController
+            ..add(const DurationChangedEvent(Duration(minutes: 10)))
+            ..add(const PositionChangedEvent(Duration(minutes: 2)))
+            ..add(
+              const BufferedPositionChangedEvent(Duration(minutes: 8)),
+            ); // Buffered to 8 minutes
+          await tester.pump();
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            VideoPlayerControls(
-              forceMobileLayout: true,
-              controller: controller,
-              gestureConfig: const GestureConfig(enableGestures: false),
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                forceMobileLayout: true,
+                controller: controller,
+                gestureConfig: const GestureConfig(enableGestures: false),
+              ),
             ),
-          ),
-        );
+          );
 
-        final layoutBuilderFinder = find.byType(LayoutBuilder);
-        // Drag within buffered range (current position is 2min, buffered to 8min, so dragging to ~5min should be buffered)
-        await tester.drag(layoutBuilderFinder.last, const Offset(100, 0));
-        await tester.pumpAndSettle();
+          final layoutBuilderFinder = find.byType(LayoutBuilder);
+          // Drag within buffered range (current position is 2min, buffered to 8min, so dragging to ~5min should be buffered)
+          await tester.drag(layoutBuilderFinder.last, const Offset(100, 0));
+          await tester.pumpAndSettle();
 
-        // Should seek during drag when within buffered range
-        verify(() => mockPlatform.seekTo(1, any())).called(greaterThan(1));
-      });
+          // Should seek during drag when within buffered range
+          verify(() => mockPlatform.seekTo(1, any())).called(greaterThan(1));
+        },
+      );
 
-      testWidgets('always mode - enables regardless of source type', (tester) async {
+      testWidgets('always mode - enables regardless of source type', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -886,7 +1297,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.always),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.always,
+              ),
             ),
           ),
         );
@@ -901,7 +1314,9 @@ void main() {
 
       testWidgets('disabled mode - never seeks during drag', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.file(TestMedia.filePath));
+        await controller.initialize(
+          source: const VideoSource.file(TestMedia.filePath),
+        );
 
         eventController
           ..add(const DurationChangedEvent(Duration(minutes: 10)))
@@ -913,7 +1328,9 @@ void main() {
             VideoPlayerControls(
               controller: controller,
               gestureConfig: const GestureConfig(enableGestures: false),
-              playbackOptionsConfig: const PlaybackOptionsConfig(liveScrubbingMode: LiveScrubbingMode.disabled),
+              playbackOptionsConfig: const PlaybackOptionsConfig(
+                liveScrubbingMode: LiveScrubbingMode.disabled,
+              ),
             ),
           ),
         );

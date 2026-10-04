@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show KeyDownEvent, LogicalKeyboardKey;
 import 'package:pro_video_player_platform_interface/pro_video_player_platform_interface.dart';
 
 import '../pro_video_player_controller.dart';
@@ -31,6 +34,8 @@ class BottomControlsBar extends StatelessWidget {
     required this.onDragStart,
     required this.onDragEnd,
     required this.onToggleTimeDisplay,
+    this.seekBarFocusNode,
+    this.onKeyboardInteraction,
     super.key,
   });
 
@@ -61,6 +66,12 @@ class BottomControlsBar extends StatelessWidget {
   /// Whether to enable hover preview on the seek bar.
   final bool enableSeekBarHoverPreview;
 
+  /// Focus node used for TV-remote navigation to the seek bar.
+  final FocusNode? seekBarFocusNode;
+
+  /// Called when keyboard input interacts with the seek bar.
+  final VoidCallback? onKeyboardInteraction;
+
   /// Called when the user starts dragging the progress bar.
   final VoidCallback onDragStart;
 
@@ -70,8 +81,33 @@ class BottomControlsBar extends StatelessWidget {
   /// Called when the user taps the time display to toggle between total/remaining.
   final VoidCallback onToggleTimeDisplay;
 
+  Widget _buildPlayPauseButton({
+    required bool isPlaying,
+    required double iconSize,
+  }) => Focus(
+    onKeyEvent: (node, event) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.select) {
+        unawaited(controller.togglePlayPause());
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: IconButton(
+      autofocus: true,
+      icon: Icon(
+        isPlaying ? Icons.pause : Icons.play_arrow,
+        color: theme.primaryColor,
+      ),
+      iconSize: iconSize,
+      onPressed: controller.togglePlayPause,
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
+  Widget build(
+    BuildContext context,
+  ) => ValueListenableBuilder<VideoPlayerValue>(
     valueListenable: controller,
     builder: (context, value, child) {
       // Use gesture seek position if available, otherwise use actual position
@@ -79,7 +115,9 @@ class BottomControlsBar extends StatelessWidget {
       final duration = value.duration;
 
       // Reduce padding and spacing when not in fullscreen to fit in tighter spaces
-      final padding = isFullscreen ? theme.controlsPadding : const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+      final padding = isFullscreen
+          ? theme.controlsPadding
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
       final verticalSpacing = isFullscreen ? 8.0 : 4.0;
       final iconSize = isFullscreen ? theme.iconSize : (theme.iconSize * 0.85);
       final playIconSize = isFullscreen ? 36.0 : 30.0;
@@ -97,6 +135,8 @@ class BottomControlsBar extends StatelessWidget {
               theme: theme,
               liveScrubbingMode: liveScrubbingMode,
               enableSeekBarHoverPreview: enableSeekBarHoverPreview,
+              focusNode: seekBarFocusNode,
+              onKeyboardInteraction: onKeyboardInteraction,
               onDragStart: onDragStart,
               onDragEnd: onDragEnd,
             ),
@@ -109,7 +149,10 @@ class BottomControlsBar extends StatelessWidget {
                   width: 56,
                   child: Text(
                     formatVideoDuration(position),
-                    style: TextStyle(color: theme.secondaryColor, fontSize: fontSize),
+                    style: TextStyle(
+                      color: theme.secondaryColor,
+                      fontSize: fontSize,
+                    ),
                     textAlign: TextAlign.left,
                   ),
                 ),
@@ -123,18 +166,23 @@ class BottomControlsBar extends StatelessWidget {
                   ),
                   if (showSkipButtons)
                     IconButton(
-                      icon: Icon(VideoControlsUtils.getSkipBackwardIcon(skipDuration), color: theme.primaryColor),
+                      icon: Icon(
+                        VideoControlsUtils.getSkipBackwardIcon(skipDuration),
+                        color: theme.primaryColor,
+                      ),
                       iconSize: iconSize,
                       onPressed: () => controller.seekBackward(skipDuration),
                     ),
-                  IconButton(
-                    icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow, color: theme.primaryColor),
+                  _buildPlayPauseButton(
+                    isPlaying: value.isPlaying,
                     iconSize: playIconSize,
-                    onPressed: value.isPlaying ? controller.pause : controller.play,
                   ),
                   if (showSkipButtons)
                     IconButton(
-                      icon: Icon(VideoControlsUtils.getSkipForwardIcon(skipDuration), color: theme.primaryColor),
+                      icon: Icon(
+                        VideoControlsUtils.getSkipForwardIcon(skipDuration),
+                        color: theme.primaryColor,
+                      ),
                       iconSize: iconSize,
                       onPressed: () => controller.seekForward(skipDuration),
                     ),
@@ -146,18 +194,23 @@ class BottomControlsBar extends StatelessWidget {
                 ] else ...[
                   if (showSkipButtons)
                     IconButton(
-                      icon: Icon(VideoControlsUtils.getSkipBackwardIcon(skipDuration), color: theme.primaryColor),
+                      icon: Icon(
+                        VideoControlsUtils.getSkipBackwardIcon(skipDuration),
+                        color: theme.primaryColor,
+                      ),
                       iconSize: iconSize,
                       onPressed: () => controller.seekBackward(skipDuration),
                     ),
-                  IconButton(
-                    icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow, color: theme.primaryColor),
+                  _buildPlayPauseButton(
+                    isPlaying: value.isPlaying,
                     iconSize: playIconSize,
-                    onPressed: value.isPlaying ? controller.pause : controller.play,
                   ),
                   if (showSkipButtons)
                     IconButton(
-                      icon: Icon(VideoControlsUtils.getSkipForwardIcon(skipDuration), color: theme.primaryColor),
+                      icon: Icon(
+                        VideoControlsUtils.getSkipForwardIcon(skipDuration),
+                        color: theme.primaryColor,
+                      ),
                       iconSize: iconSize,
                       onPressed: () => controller.seekForward(skipDuration),
                     ),
@@ -172,7 +225,10 @@ class BottomControlsBar extends StatelessWidget {
                       showRemainingTime
                           ? '-${formatVideoDuration(duration - position)}'
                           : formatVideoDuration(duration),
-                      style: TextStyle(color: theme.secondaryColor, fontSize: fontSize),
+                      style: TextStyle(
+                        color: theme.secondaryColor,
+                        fontSize: fontSize,
+                      ),
                       textAlign: TextAlign.right,
                     ),
                   ),

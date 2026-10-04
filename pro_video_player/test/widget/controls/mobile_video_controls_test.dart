@@ -51,6 +51,7 @@ void main() {
     Duration skipDuration = const Duration(seconds: 10),
     LiveScrubbingMode liveScrubbingMode = LiveScrubbingMode.adaptive,
     bool showSeekBarHoverPreview = false,
+    FocusNode? seekBarFocusNode,
     bool showSubtitleButton = true,
     bool showAudioButton = false,
     bool showQualityButton = false,
@@ -75,6 +76,7 @@ void main() {
     skipDuration: skipDuration,
     liveScrubbingMode: liveScrubbingMode,
     showSeekBarHoverPreview: showSeekBarHoverPreview,
+    seekBarFocusNode: seekBarFocusNode,
     showSubtitleButton: showSubtitleButton,
     showAudioButton: showAudioButton,
     showQualityButton: showQualityButton,
@@ -105,12 +107,38 @@ void main() {
   );
 
   group('MobileVideoControls', () {
+    testWidgets('fills the available video bounds', (tester) async {
+      final controller = ProVideoPlayerController();
+      await controller.initialize(
+        source: const VideoSource.network(TestMedia.networkUrl),
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          SizedBox(
+            width: 640,
+            height: 360,
+            child: buildMobileControls(controller: controller),
+          ),
+        ),
+      );
+
+      expect(
+        tester.getSize(find.byType(MobileVideoControls)),
+        const Size(640, 360),
+      );
+    });
+
     group('basic rendering', () {
       testWidgets('renders with correct layout structure', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         // Verify basic structure
@@ -121,9 +149,13 @@ void main() {
 
       testWidgets('shows three main sections', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         // Should have: top toolbar, center controls, bottom bar
@@ -135,13 +167,19 @@ void main() {
     group('gradient overlays', () {
       testWidgets('shows two gradient overlays', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         // Find gradient decorations
-        final decoratedBoxes = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox));
+        final decoratedBoxes = tester.widgetList<DecoratedBox>(
+          find.byType(DecoratedBox),
+        );
         final gradients = decoratedBoxes
             .where((box) => box.decoration is BoxDecoration)
             .map((box) => (box.decoration as BoxDecoration).gradient)
@@ -162,12 +200,18 @@ void main() {
 
       testWidgets('gradients are aligned top to bottom', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
-        final decoratedBoxes = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox));
+        final decoratedBoxes = tester.widgetList<DecoratedBox>(
+          find.byType(DecoratedBox),
+        );
         final gradients = decoratedBoxes
             .where((box) => box.decoration is BoxDecoration)
             .map((box) => (box.decoration as BoxDecoration).gradient)
@@ -182,42 +226,64 @@ void main() {
     });
 
     group('fullscreen padding', () {
-      testWidgets('adds padding when in fullscreen', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'adds padding when in fullscreen',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        // Enter fullscreen
-        fixture.eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
-        await tester.pump(TestDelays.eventPropagation);
+          // Enter fullscreen
+          fixture.eventController.add(
+            const FullscreenStateChangedEvent(isFullscreen: true),
+          );
+          await tester.pump(TestDelays.eventPropagation);
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
-        await tester.pump();
+          await tester.pumpWidget(
+            buildTestWidget(buildMobileControls(controller: controller)),
+          );
+          await tester.pump();
 
-        // Find paddings in the widget tree
-        final paddings = tester.widgetList<Padding>(find.byType(Padding));
+          // Find paddings in the widget tree
+          final paddings = tester.widgetList<Padding>(find.byType(Padding));
 
-        // Should have top padding (24) and bottom padding (44)
-        final topPadding = paddings.firstWhere((p) => p.padding == const EdgeInsets.only(top: 24));
-        final bottomPadding = paddings.firstWhere((p) => p.padding == const EdgeInsets.only(bottom: 44));
+          // Should have top padding (24) and bottom padding (44)
+          final topPadding = paddings.firstWhere(
+            (p) => p.padding == const EdgeInsets.only(top: 24),
+          );
+          final bottomPadding = paddings.firstWhere(
+            (p) => p.padding == const EdgeInsets.only(bottom: 44),
+          );
 
-        expect(topPadding, isNotNull);
-        expect(bottomPadding, isNotNull);
-      }, skip: true); // TODO: This test hangs indefinitely - needs investigation
+          expect(topPadding, isNotNull);
+          expect(bottomPadding, isNotNull);
+        },
+        skip: true,
+      ); // TODO: This test hangs indefinitely - needs investigation
 
       testWidgets('has no padding when not in fullscreen', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         // Not in fullscreen (default - no need to emit event)
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         final paddings = tester.widgetList<Padding>(find.byType(Padding));
 
         // Should have zero padding
-        final topPadding = paddings.firstWhere((p) => p.padding == EdgeInsets.zero);
-        final bottomPadding = paddings.firstWhere((p) => p.padding == EdgeInsets.zero);
+        final topPadding = paddings.firstWhere(
+          (p) => p.padding == EdgeInsets.zero,
+        );
+        final bottomPadding = paddings.firstWhere(
+          (p) => p.padding == EdgeInsets.zero,
+        );
 
         expect(topPadding, isNotNull);
         expect(bottomPadding, isNotNull);
@@ -227,9 +293,13 @@ void main() {
     group('child widget integration', () {
       testWidgets('shows PlayerToolbar in top section', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         expect(find.byType(PlayerToolbar), findsOneWidget);
@@ -237,9 +307,13 @@ void main() {
 
       testWidgets('shows BottomControlsBar in bottom section', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         expect(find.byType(BottomControlsBar), findsOneWidget);
@@ -247,12 +321,22 @@ void main() {
 
       testWidgets('shows provided center controls', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        final centerWidget = Container(key: const Key('custom-center'), child: const Text('Center Controls'));
+        final centerWidget = Container(
+          key: const Key('custom-center'),
+          child: const Text('Center Controls'),
+        );
 
         await tester.pumpWidget(
-          buildTestWidget(buildMobileControls(controller: controller, centerControls: centerWidget)),
+          buildTestWidget(
+            buildMobileControls(
+              controller: controller,
+              centerControls: centerWidget,
+            ),
+          ),
         );
         await tester.pump();
 
@@ -264,20 +348,28 @@ void main() {
     group('callback propagation', () {
       testWidgets('passes callbacks to PlayerToolbar', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller)));
+        await tester.pumpWidget(
+          buildTestWidget(buildMobileControls(controller: controller)),
+        );
         await tester.pump();
 
         // Verify PlayerToolbar receives configuration
-        final toolbar = tester.widget<PlayerToolbar>(find.byType(PlayerToolbar));
+        final toolbar = tester.widget<PlayerToolbar>(
+          find.byType(PlayerToolbar),
+        );
         expect(toolbar.showSubtitleButton, isTrue);
         expect(toolbar.showSpeedButton, isTrue);
       });
 
       testWidgets('passes callbacks to BottomControlsBar', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -291,7 +383,9 @@ void main() {
         await tester.pump();
 
         // Verify BottomControlsBar receives configuration
-        final bottomBar = tester.widget<BottomControlsBar>(find.byType(BottomControlsBar));
+        final bottomBar = tester.widget<BottomControlsBar>(
+          find.byType(BottomControlsBar),
+        );
         expect(bottomBar.showSkipButtons, isFalse);
         expect(bottomBar.skipDuration, const Duration(seconds: 15));
       });
@@ -299,19 +393,32 @@ void main() {
 
     group('theme styling', () {
       testWidgets('passes theme to child widgets', (tester) async {
-        final theme = VideoPlayerTheme.light().copyWith(primaryColor: Colors.red, backgroundColor: Colors.black);
+        final theme = VideoPlayerTheme.light().copyWith(
+          primaryColor: Colors.red,
+          backgroundColor: Colors.black,
+        );
 
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
-        await tester.pumpWidget(buildTestWidget(buildMobileControls(controller: controller, theme: theme)));
+        await tester.pumpWidget(
+          buildTestWidget(
+            buildMobileControls(controller: controller, theme: theme),
+          ),
+        );
         await tester.pump();
 
         // Verify theme is passed to child widgets
-        final toolbar = tester.widget<PlayerToolbar>(find.byType(PlayerToolbar));
+        final toolbar = tester.widget<PlayerToolbar>(
+          find.byType(PlayerToolbar),
+        );
         expect(toolbar.theme.primaryColor, Colors.red);
 
-        final bottomBar = tester.widget<BottomControlsBar>(find.byType(BottomControlsBar));
+        final bottomBar = tester.widget<BottomControlsBar>(
+          find.byType(BottomControlsBar),
+        );
         expect(bottomBar.theme.primaryColor, Colors.red);
       });
     });

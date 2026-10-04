@@ -162,7 +162,8 @@ void main() {
         final path = request.url.path;
 
         if (path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static">
   <Period>
     <AdaptationSet contentType="text" lang="en" mimeType="text/vtt">
@@ -175,7 +176,8 @@ void main() {
         }
 
         if (path.endsWith('en.vtt')) {
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Hello DASH
@@ -203,7 +205,8 @@ From VTT
         final path = request.url.path;
 
         if (path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static">
   <Period>
     <AdaptationSet contentType="text" lang="en" mimeType="application/ttml+xml">
@@ -216,7 +219,8 @@ From VTT
         }
 
         if (path.endsWith('en.ttml')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body>
     <div>
@@ -255,7 +259,8 @@ From VTT
         requestedUris.add(request.url.toString());
 
         if (request.url.path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en">
@@ -288,7 +293,8 @@ From VTT
         requestedUris.add(request.url.toString());
 
         if (request.url.path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en">
@@ -321,7 +327,8 @@ From VTT
         requestedUris.add(request.url.toString());
 
         if (request.url.path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en">
@@ -350,7 +357,8 @@ From VTT
     test('auto-detects VTT format from content', () async {
       final client = MockClient((request) async {
         if (request.url.path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en">
@@ -364,7 +372,8 @@ From VTT
 
         if (request.url.path.endsWith('en.txt')) {
           // Return VTT content without declaring mimeType
-          return http.Response('''WEBVTT
+          return http.Response('''
+WEBVTT
 
 00:00:00.000 --> 00:00:05.000
 Auto-detected VTT
@@ -387,7 +396,8 @@ Auto-detected VTT
     test('auto-detects TTML format from content', () async {
       final client = MockClient((request) async {
         if (request.url.path.endsWith('manifest.mpd')) {
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en">
@@ -401,7 +411,8 @@ Auto-detected VTT
 
         if (request.url.path.endsWith('en.xml')) {
           // Use a full TTML document that the parser recognizes
-          return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+          return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling">
   <body>
     <div>
@@ -427,7 +438,8 @@ Auto-detected VTT
       test('selects track by preferred language', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('manifest.mpd')) {
-            return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+            return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en" mimeType="text/vtt">
@@ -466,7 +478,8 @@ Auto-detected VTT
       test('falls back to first track when no language match', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('manifest.mpd')) {
-            return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+            return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="en" mimeType="text/vtt">
@@ -499,7 +512,8 @@ Auto-detected VTT
       test('matches language code prefixes', () async {
         final client = MockClient((request) async {
           if (request.url.path.endsWith('manifest.mpd')) {
-            return http.Response('''<?xml version="1.0" encoding="UTF-8"?>
+            return http.Response('''
+<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
   <Period>
     <AdaptationSet contentType="text" lang="eng" mimeType="text/vtt">

@@ -61,6 +61,9 @@ class MobileVideoControls extends StatelessWidget {
     required this.onFullscreenEnter,
     required this.onFullscreenExit,
     required this.centerControls,
+    this.toolbarFocusNode,
+    this.seekBarFocusNode,
+    this.onKeyboardInteraction,
     super.key,
   });
 
@@ -87,6 +90,12 @@ class MobileVideoControls extends StatelessWidget {
 
   /// Whether to enable seek bar hover preview.
   final bool showSeekBarHoverPreview;
+
+  /// Focus node used to navigate to and interact with the seek bar.
+  final FocusNode? seekBarFocusNode;
+
+  /// Called when keyboard input interacts with the seek bar.
+  final VoidCallback? onKeyboardInteraction;
 
   /// Whether to show subtitle button.
   final bool showSubtitleButton;
@@ -140,19 +149,24 @@ class MobileVideoControls extends StatelessWidget {
   final VoidCallback onToggleTimeDisplay;
 
   /// Callback to show quality picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowQualityPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowQualityPicker;
 
   /// Callback to show subtitle picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowSubtitlePicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowSubtitlePicker;
 
   /// Callback to show audio picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowAudioPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowAudioPicker;
 
   /// Callback to show chapters picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowChaptersPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowChaptersPicker;
 
   /// Callback to show speed picker.
-  final void Function(BuildContext context, VideoPlayerTheme theme) onShowSpeedPicker;
+  final void Function(BuildContext context, VideoPlayerTheme theme)
+  onShowSpeedPicker;
 
   /// Callback to show scaling mode picker.
   final void Function(VideoPlayerTheme theme) onShowScalingModePicker;
@@ -169,6 +183,9 @@ class MobileVideoControls extends StatelessWidget {
   /// Center controls widget (play button, etc.).
   final Widget centerControls;
 
+  /// Focus node for returning to the toolbar from the seek bar.
+  final FocusNode? toolbarFocusNode;
+
   @override
   Widget build(BuildContext context) {
     // Mobile layout: gradient overlays at top and bottom, clear center
@@ -181,84 +198,103 @@ class MobileVideoControls extends StatelessWidget {
     final rightPadding = isFullscreen ? padding.right : 0.0;
 
     // Use ClipRect to handle sub-pixel overflow that can occur on certain screen sizes
-    return ClipRect(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Top area with gradient (black at top fading to transparent)
-          Flexible(
-            child: DecoratedBox(
+    return SizedBox.expand(
+      child: ClipRect(
+        child: Column(
+          children: [
+            // Top area with gradient (black at top fading to transparent)
+            Flexible(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.7),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: topPadding,
+                    left: leftPadding,
+                    right: rightPadding,
+                  ),
+                  child: PlayerToolbar(
+                    controller: controller,
+                    theme: theme,
+                    controlsState: controlsState,
+                    showSubtitleButton: showSubtitleButton,
+                    showAudioButton: showAudioButton,
+                    showQualityButton: showQualityButton,
+                    showSpeedButton: showSpeedButton,
+                    showScalingModeButton: showScalingModeButton,
+                    showBackgroundPlaybackButton: showBackgroundPlaybackButton,
+                    showPipButton: showPipButton,
+                    showOrientationLockButton: showOrientationLockButton,
+                    showFullscreenButton: showFullscreenButton,
+                    playerToolbarActions: playerToolbarActions,
+                    maxPlayerToolbarActions: maxPlayerToolbarActions,
+                    autoOverflowActions: autoOverflowActions,
+                    onDismiss: onDismiss,
+                    isDesktopPlatform: isDesktopPlatform,
+                    onShowQualityPicker: onShowQualityPicker,
+                    onShowSubtitlePicker: onShowSubtitlePicker,
+                    onShowAudioPicker: onShowAudioPicker,
+                    onShowChaptersPicker: onShowChaptersPicker,
+                    onShowSpeedPicker: onShowSpeedPicker,
+                    onShowScalingModePicker: onShowScalingModePicker,
+                    onShowOrientationLockPicker: onShowOrientationLockPicker,
+                    onFullscreenEnter: onFullscreenEnter,
+                    onFullscreenExit: onFullscreenExit,
+                    focusNode: toolbarFocusNode,
+                  ),
+                ),
+              ),
+            ),
+            // Center controls - no background, video visible
+            centerControls,
+            // Bottom area with gradient (transparent at top fading to black)
+            // Not flexible - needs minimum height for playback controls
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.7),
+                  ],
                 ),
               ),
               child: Padding(
-                padding: EdgeInsets.only(top: topPadding, left: leftPadding, right: rightPadding),
-                child: PlayerToolbar(
+                padding: EdgeInsets.only(
+                  bottom: bottomPadding,
+                  left: leftPadding,
+                  right: rightPadding,
+                ),
+                child: BottomControlsBar(
                   controller: controller,
                   theme: theme,
-                  controlsState: controlsState,
-                  showSubtitleButton: showSubtitleButton,
-                  showAudioButton: showAudioButton,
-                  showQualityButton: showQualityButton,
-                  showSpeedButton: showSpeedButton,
-                  showScalingModeButton: showScalingModeButton,
-                  showBackgroundPlaybackButton: showBackgroundPlaybackButton,
-                  showPipButton: showPipButton,
-                  showOrientationLockButton: showOrientationLockButton,
-                  showFullscreenButton: showFullscreenButton,
-                  playerToolbarActions: playerToolbarActions,
-                  maxPlayerToolbarActions: maxPlayerToolbarActions,
-                  autoOverflowActions: autoOverflowActions,
-                  onDismiss: onDismiss,
-                  isDesktopPlatform: isDesktopPlatform,
-                  onShowQualityPicker: onShowQualityPicker,
-                  onShowSubtitlePicker: onShowSubtitlePicker,
-                  onShowAudioPicker: onShowAudioPicker,
-                  onShowChaptersPicker: onShowChaptersPicker,
-                  onShowSpeedPicker: onShowSpeedPicker,
-                  onShowScalingModePicker: onShowScalingModePicker,
-                  onShowOrientationLockPicker: onShowOrientationLockPicker,
-                  onFullscreenEnter: onFullscreenEnter,
-                  onFullscreenExit: onFullscreenExit,
+                  isFullscreen: isFullscreen,
+                  showRemainingTime:
+                      (controlsState as dynamic).showRemainingTime as bool,
+                  gestureSeekPosition: gestureSeekPosition,
+                  showSkipButtons: showSkipButtons,
+                  skipDuration: skipDuration,
+                  liveScrubbingMode: liveScrubbingMode,
+                  enableSeekBarHoverPreview: showSeekBarHoverPreview,
+                  seekBarFocusNode: seekBarFocusNode,
+                  onKeyboardInteraction: onKeyboardInteraction,
+                  onDragStart: onDragStart,
+                  onDragEnd: onDragEnd,
+                  onToggleTimeDisplay: onToggleTimeDisplay,
                 ),
               ),
             ),
-          ),
-          // Center controls - no background, video visible
-          centerControls,
-          // Bottom area with gradient (transparent at top fading to black)
-          // Not flexible - needs minimum height for playback controls
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.only(bottom: bottomPadding, left: leftPadding, right: rightPadding),
-              child: BottomControlsBar(
-                controller: controller,
-                theme: theme,
-                isFullscreen: isFullscreen,
-                showRemainingTime: (controlsState as dynamic).showRemainingTime as bool,
-                gestureSeekPosition: gestureSeekPosition,
-                showSkipButtons: showSkipButtons,
-                skipDuration: skipDuration,
-                liveScrubbingMode: liveScrubbingMode,
-                enableSeekBarHoverPreview: showSeekBarHoverPreview,
-                onDragStart: onDragStart,
-                onDragEnd: onDragEnd,
-                onToggleTimeDisplay: onToggleTimeDisplay,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

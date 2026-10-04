@@ -21,7 +21,6 @@ void main() {
         language: 'eng',
         label: 'English (SDH)',
         isDefault: true,
-        isForced: false,
       );
 
       expect(track.trackId, equals(5));
@@ -211,7 +210,6 @@ void main() {
           language: 'eng',
           label: 'English',
           isDefault: true,
-          isForced: false,
         );
         const track2 = EmbeddedSubtitleTrack(
           trackId: 3,
@@ -219,7 +217,6 @@ void main() {
           language: 'eng',
           label: 'English',
           isDefault: true,
-          isForced: false,
         );
 
         expect(track1, equals(track2));
@@ -255,14 +252,14 @@ void main() {
 
       test('tracks with different isDefault are not equal', () {
         const track1 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g', isDefault: true);
-        const track2 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g', isDefault: false);
+        const track2 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g');
 
         expect(track1, isNot(equals(track2)));
       });
 
       test('tracks with different isForced are not equal', () {
         const track1 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g', isForced: true);
-        const track2 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g', isForced: false);
+        const track2 = EmbeddedSubtitleTrack(trackId: 1, codec: 'tx3g');
 
         expect(track1, isNot(equals(track2)));
       });
@@ -275,7 +272,6 @@ void main() {
         language: 'eng',
         label: 'English',
         isDefault: true,
-        isForced: false,
       );
       const track2 = EmbeddedSubtitleTrack(
         trackId: 3,
@@ -283,7 +279,6 @@ void main() {
         language: 'eng',
         label: 'English',
         isDefault: true,
-        isForced: false,
       );
 
       expect(track1.hashCode, equals(track2.hashCode));
@@ -296,7 +291,6 @@ void main() {
         language: 'eng',
         label: 'English',
         isDefault: true,
-        isForced: false,
       );
 
       final str = track.toString();

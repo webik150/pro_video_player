@@ -11,7 +11,9 @@ import 'package:pro_video_player_platform_interface/pro_video_player_platform_in
 import '../shared/test_constants.dart';
 import '../shared/test_helpers.dart';
 
-class MockProVideoPlayerPlatform extends Mock with MockPlatformInterfaceMixin implements ProVideoPlayerPlatform {}
+class MockProVideoPlayerPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements ProVideoPlayerPlatform {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +30,11 @@ void main() {
     registerFallbackValue(VideoQualityTrack.auto);
 
     // Mock SystemChrome calls for fullscreen tests
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (methodCall) async => null,
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          SystemChannels.platform,
+          (methodCall) async => null,
+        );
   });
 
   setUp(() {
@@ -46,19 +49,33 @@ void main() {
       ),
     ).thenAnswer((_) async => 1);
 
-    when(() => mockPlatform.events(any())).thenAnswer((_) => eventController.stream);
+    when(
+      () => mockPlatform.events(any()),
+    ).thenAnswer((_) => eventController.stream);
     when(() => mockPlatform.dispose(any())).thenAnswer((_) async {});
     when(() => mockPlatform.play(any())).thenAnswer((_) async {});
     when(() => mockPlatform.pause(any())).thenAnswer((_) async {});
     when(() => mockPlatform.seekTo(any(), any())).thenAnswer((_) async {});
-    when(() => mockPlatform.enterFullscreen(any())).thenAnswer((_) async => true);
+    when(
+      () => mockPlatform.enterFullscreen(any()),
+    ).thenAnswer((_) async => true);
     when(() => mockPlatform.exitFullscreen(any())).thenAnswer((_) async {});
-    when(() => mockPlatform.setPlaybackSpeed(any(), any())).thenAnswer((_) async {});
-    when(() => mockPlatform.setSubtitleTrack(any(), any())).thenAnswer((_) async {});
+    when(
+      () => mockPlatform.setPlaybackSpeed(any(), any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockPlatform.setSubtitleTrack(any(), any()),
+    ).thenAnswer((_) async {});
     when(() => mockPlatform.isPipSupported()).thenAnswer((_) async => true);
-    when(() => mockPlatform.enterPip(any(), options: any(named: 'options'))).thenAnswer((_) async => true);
-    when(() => mockPlatform.isBackgroundPlaybackSupported()).thenAnswer((_) async => false);
-    when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => false);
+    when(
+      () => mockPlatform.enterPip(any(), options: any(named: 'options')),
+    ).thenAnswer((_) async => true);
+    when(
+      () => mockPlatform.isBackgroundPlaybackSupported(),
+    ).thenAnswer((_) async => false);
+    when(
+      () => mockPlatform.isCastingSupported(),
+    ).thenAnswer((_) async => false);
   });
 
   tearDown(() async {
@@ -68,7 +85,9 @@ void main() {
 
   group('VideoPlayerControls', () {
     group('playlist controls', () {
-      testWidgets('shows playlist navigation buttons when playlist is active', (tester) async {
+      testWidgets('shows playlist navigation buttons when playlist is active', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
 
         // Initialize with playlist
@@ -104,7 +123,9 @@ void main() {
         expect(find.byIcon(Icons.skip_next), findsOneWidget);
       });
 
-      testWidgets('shows shuffle and repeat buttons when playlist is active', (tester) async {
+      testWidgets('shows shuffle and repeat buttons when playlist is active', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
 
         // Initialize with playlist
@@ -147,13 +168,21 @@ void main() {
     group('casting controls', () {
       testWidgets(
         'shows cast button when casting is supported',
-        skip: true, // CastButton uses native platform views that don't render in unit tests
+        skip:
+            true, // CastButton uses native platform views that don't render in unit tests
         (tester) async {
-          when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => true);
-          when(() => mockPlatform.startCasting(any(), device: any(named: 'device'))).thenAnswer((_) async => true);
+          when(
+            () => mockPlatform.isCastingSupported(),
+          ).thenAnswer((_) async => true);
+          when(
+            () =>
+                mockPlatform.startCasting(any(), device: any(named: 'device')),
+          ).thenAnswer((_) async => true);
 
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
           await tester.pump();
 
           await tester.pumpWidget(
@@ -171,11 +200,17 @@ void main() {
         },
       );
 
-      testWidgets('hides cast button when casting is not supported', (tester) async {
-        when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => false);
+      testWidgets('hides cast button when casting is not supported', (
+        tester,
+      ) async {
+        when(
+          () => mockPlatform.isCastingSupported(),
+        ).thenAnswer((_) async => false);
 
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
         await tester.pump();
 
         await tester.pumpWidget(
@@ -197,18 +232,27 @@ void main() {
       // (UiKitView, AndroidView, AppKitView) that don't render Flutter icons in unit tests.
       testWidgets(
         'shows cast_connected icon when casting is active',
-        skip: true, // CastButton uses native platform views that don't render in unit tests
+        skip:
+            true, // CastButton uses native platform views that don't render in unit tests
         (tester) async {
-          when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => true);
+          when(
+            () => mockPlatform.isCastingSupported(),
+          ).thenAnswer((_) async => true);
 
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
           // Simulate casting connected event
           eventController.add(
             const CastStateChangedEvent(
               state: CastState.connected,
-              device: CastDevice(id: 'test', name: 'Test TV', type: CastDeviceType.chromecast),
+              device: CastDevice(
+                id: 'test',
+                name: 'Test TV',
+                type: CastDeviceType.chromecast,
+              ),
             ),
           );
           await tester.pump();
@@ -233,13 +277,21 @@ void main() {
       // in unit tests. The casting functionality is tested via integration tests.
       testWidgets(
         'calls startCasting when cast button is tapped',
-        skip: true, // CastButton uses native platform views that don't render in unit tests
+        skip:
+            true, // CastButton uses native platform views that don't render in unit tests
         (tester) async {
-          when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => true);
-          when(() => mockPlatform.startCasting(any(), device: any(named: 'device'))).thenAnswer((_) async => true);
+          when(
+            () => mockPlatform.isCastingSupported(),
+          ).thenAnswer((_) async => true);
+          when(
+            () =>
+                mockPlatform.startCasting(any(), device: any(named: 'device')),
+          ).thenAnswer((_) async => true);
 
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
           await tester.pump();
 
           await tester.pumpWidget(
@@ -256,25 +308,39 @@ void main() {
           await tester.tap(find.byIcon(Icons.cast));
           await tester.pump();
 
-          verify(() => mockPlatform.startCasting(any(), device: any(named: 'device'))).called(1);
+          verify(
+            () =>
+                mockPlatform.startCasting(any(), device: any(named: 'device')),
+          ).called(1);
         },
       );
 
       testWidgets(
         'calls stopCasting when cast_connected button is tapped',
-        skip: true, // CastButton uses native platform views that don't render in unit tests
+        skip:
+            true, // CastButton uses native platform views that don't render in unit tests
         (tester) async {
-          when(() => mockPlatform.isCastingSupported()).thenAnswer((_) async => true);
-          when(() => mockPlatform.stopCasting(any())).thenAnswer((_) async => true);
+          when(
+            () => mockPlatform.isCastingSupported(),
+          ).thenAnswer((_) async => true);
+          when(
+            () => mockPlatform.stopCasting(any()),
+          ).thenAnswer((_) async => true);
 
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
           // Set casting to connected
           eventController.add(
             const CastStateChangedEvent(
               state: CastState.connected,
-              device: CastDevice(id: 'test', name: 'Test TV', type: CastDeviceType.chromecast),
+              device: CastDevice(
+                id: 'test',
+                name: 'Test TV',
+                type: CastDeviceType.chromecast,
+              ),
             ),
           );
           await tester.pump();
@@ -301,7 +367,9 @@ void main() {
     group('subtitle overlay', () {
       testWidgets('renders SubtitleOverlay in controls stack', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -317,9 +385,13 @@ void main() {
         expect(find.byType(SubtitleOverlay), findsOneWidget);
       });
 
-      testWidgets('SubtitleOverlay shows external subtitle cue text', (tester) async {
+      testWidgets('SubtitleOverlay shows external subtitle cue text', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         // Select an external subtitle track with cues
         const externalTrack = ExternalSubtitleTrack(
@@ -330,7 +402,12 @@ void main() {
           format: SubtitleFormat.srt,
           language: 'en',
           cues: [
-            SubtitleCue(index: 1, start: Duration.zero, end: Duration(seconds: 10), text: 'Hello from subtitles!'),
+            SubtitleCue(
+              index: 1,
+              start: Duration.zero,
+              end: Duration(seconds: 10),
+              text: 'Hello from subtitles!',
+            ),
           ],
         );
 
@@ -352,35 +429,48 @@ void main() {
         expect(find.text('Hello from subtitles!'), findsOneWidget);
       });
 
-      testWidgets('SubtitleOverlay does not show text for embedded subtitle track', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+      testWidgets(
+        'SubtitleOverlay does not show text for embedded subtitle track',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
-        // Select an embedded subtitle track (no ext- prefix)
-        const embeddedTrack = SubtitleTrack(id: '0:1', label: 'English', language: 'en');
+          // Select an embedded subtitle track (no ext- prefix)
+          const embeddedTrack = SubtitleTrack(
+            id: '0:1',
+            label: 'English',
+            language: 'en',
+          );
 
-        eventController
-          ..add(const SelectedSubtitleChangedEvent(embeddedTrack))
-          ..add(const PositionChangedEvent(Duration(seconds: 5)));
-        await tester.pump();
+          eventController
+            ..add(const SelectedSubtitleChangedEvent(embeddedTrack))
+            ..add(const PositionChangedEvent(Duration(seconds: 5)));
+          await tester.pump();
 
-        await tester.pumpWidget(
-          buildTestWidget(
-            VideoPlayerControls(
-              controller: controller,
-              gestureConfig: const GestureConfig(enableGestures: false),
-              forceMobileLayout: true,
+          await tester.pumpWidget(
+            buildTestWidget(
+              VideoPlayerControls(
+                controller: controller,
+                gestureConfig: const GestureConfig(enableGestures: false),
+                forceMobileLayout: true,
+              ),
             ),
-          ),
-        );
+          );
 
-        // No subtitle text should be rendered for embedded tracks
-        expect(find.textContaining('Hello'), findsNothing);
-      });
+          // No subtitle text should be rendered for embedded tracks
+          expect(find.textContaining('Hello'), findsNothing);
+        },
+      );
 
-      testWidgets('SubtitleOverlay updates when position changes', (tester) async {
+      testWidgets('SubtitleOverlay updates when position changes', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         const externalTrack = ExternalSubtitleTrack(
           id: 'ext-0',
@@ -390,8 +480,18 @@ void main() {
           format: SubtitleFormat.srt,
           language: 'en',
           cues: [
-            SubtitleCue(index: 1, start: Duration.zero, end: Duration(seconds: 5), text: 'First cue'),
-            SubtitleCue(index: 2, start: Duration(seconds: 6), end: Duration(seconds: 10), text: 'Second cue'),
+            SubtitleCue(
+              index: 1,
+              start: Duration.zero,
+              end: Duration(seconds: 5),
+              text: 'First cue',
+            ),
+            SubtitleCue(
+              index: 2,
+              start: Duration(seconds: 6),
+              end: Duration(seconds: 10),
+              text: 'Second cue',
+            ),
           ],
         );
 
@@ -421,9 +521,13 @@ void main() {
         expect(find.text('Second cue'), findsOneWidget);
       });
 
-      testWidgets('SubtitleOverlay shows nothing when no cue is active', (tester) async {
+      testWidgets('SubtitleOverlay shows nothing when no cue is active', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         const externalTrack = ExternalSubtitleTrack(
           id: 'ext-0',
@@ -432,7 +536,14 @@ void main() {
           sourceType: 'network',
           format: SubtitleFormat.srt,
           language: 'en',
-          cues: [SubtitleCue(index: 1, start: Duration(seconds: 10), end: Duration(seconds: 15), text: 'Later cue')],
+          cues: [
+            SubtitleCue(
+              index: 1,
+              start: Duration(seconds: 10),
+              end: Duration(seconds: 15),
+              text: 'Later cue',
+            ),
+          ],
         );
 
         // Position before any cue
@@ -458,13 +569,19 @@ void main() {
     group('didUpdateWidget', () {
       testWidgets('updates listener when controller changes', (tester) async {
         final controller1 = ProVideoPlayerController();
-        await controller1.initialize(source: const VideoSource.network('https://example.com/video1.mp4'));
+        await controller1.initialize(
+          source: const VideoSource.network('https://example.com/video1.mp4'),
+        );
 
         final controller2 = ProVideoPlayerController();
-        await controller2.initialize(source: const VideoSource.network('https://example.com/video2.mp4'));
+        await controller2.initialize(
+          source: const VideoSource.network('https://example.com/video2.mp4'),
+        );
 
         // Set different states for each controller
-        eventController.add(const PlaybackStateChangedEvent(PlaybackState.paused));
+        eventController.add(
+          const PlaybackStateChangedEvent(PlaybackState.paused),
+        );
         await tester.pump();
 
         // Build with first controller
@@ -496,26 +613,13 @@ void main() {
     });
 
     group('gesture integration', () {
-      testWidgets('uses VideoPlayerGestureDetector when gestures enabled', (tester) async {
+      testWidgets('uses VideoPlayerGestureDetector when gestures enabled', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
-
-        await tester.pumpWidget(
-          buildTestWidget(
-            SizedBox(
-              width: 800,
-              height: 600,
-              child: VideoPlayerControls(forceMobileLayout: true, controller: controller),
-            ),
-          ),
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
         );
-
-        expect(find.byType(VideoPlayerGestureDetector), findsOneWidget);
-      });
-
-      testWidgets('does not use VideoPlayerGestureDetector when gestures disabled', (tester) async {
-        final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -523,22 +627,49 @@ void main() {
               width: 800,
               height: 600,
               child: VideoPlayerControls(
-                controller: controller,
-                gestureConfig: const GestureConfig(enableGestures: false),
                 forceMobileLayout: true,
+                controller: controller,
               ),
             ),
           ),
         );
 
-        expect(find.byType(VideoPlayerGestureDetector), findsNothing);
+        expect(find.byType(VideoPlayerGestureDetector), findsOneWidget);
       });
+
+      testWidgets(
+        'does not use VideoPlayerGestureDetector when gestures disabled',
+        (tester) async {
+          final controller = ProVideoPlayerController();
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SizedBox(
+                width: 800,
+                height: 600,
+                child: VideoPlayerControls(
+                  controller: controller,
+                  gestureConfig: const GestureConfig(enableGestures: false),
+                  forceMobileLayout: true,
+                ),
+              ),
+            ),
+          );
+
+          expect(find.byType(VideoPlayerGestureDetector), findsNothing);
+        },
+      );
     });
 
     group('tooltips', () {
       testWidgets('fullscreen button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -555,14 +686,19 @@ void main() {
 
         // Find the IconButton with tooltip
         final iconButton = tester.widget<IconButton>(
-          find.ancestor(of: fullscreenButton, matching: find.byType(IconButton)),
+          find.ancestor(
+            of: fullscreenButton,
+            matching: find.byType(IconButton),
+          ),
         );
         expect(iconButton.tooltip, equals('Fullscreen'));
       });
 
       testWidgets('pip button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -579,16 +715,22 @@ void main() {
         final pipButton = find.byIcon(Icons.picture_in_picture_alt);
         expect(pipButton, findsOneWidget);
 
-        final iconButton = tester.widget<IconButton>(find.ancestor(of: pipButton, matching: find.byType(IconButton)));
+        final iconButton = tester.widget<IconButton>(
+          find.ancestor(of: pipButton, matching: find.byType(IconButton)),
+        );
         expect(iconButton.tooltip, equals('Picture-in-Picture'));
       });
 
       testWidgets('subtitle button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController.add(
-          const SubtitleTracksChangedEvent([SubtitleTrack(id: '1', label: 'English', language: 'en')]),
+          const SubtitleTracksChangedEvent([
+            SubtitleTrack(id: '1', label: 'English', language: 'en'),
+          ]),
         );
         await tester.pump();
 
@@ -613,7 +755,9 @@ void main() {
 
       testWidgets('speed button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -630,7 +774,10 @@ void main() {
         expect(speedButton, findsOneWidget);
 
         // Should have a Tooltip ancestor with 'Playback speed'
-        final tooltip = find.ancestor(of: speedButton, matching: find.byType(Tooltip));
+        final tooltip = find.ancestor(
+          of: speedButton,
+          matching: find.byType(Tooltip),
+        );
         expect(tooltip, findsOneWidget);
 
         final tooltipWidget = tester.widget<Tooltip>(tooltip);
@@ -639,7 +786,9 @@ void main() {
 
       testWidgets('scaling mode button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -662,7 +811,9 @@ void main() {
 
       testWidgets('audio track button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         eventController.add(
           const AudioTracksChangedEvent([
@@ -685,15 +836,21 @@ void main() {
         final audioButton = find.byIcon(Icons.audiotrack);
         expect(audioButton, findsOneWidget);
 
-        final iconButton = tester.widget<IconButton>(find.ancestor(of: audioButton, matching: find.byType(IconButton)));
+        final iconButton = tester.widget<IconButton>(
+          find.ancestor(of: audioButton, matching: find.byType(IconButton)),
+        );
         expect(iconButton.tooltip, equals('Audio track'));
       });
     });
 
     group('orientation lock', () {
-      testWidgets('orientation lock button not visible when not in fullscreen', (tester) async {
+      testWidgets('orientation lock button not visible when not in fullscreen', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -711,12 +868,18 @@ void main() {
         expect(find.byIcon(Icons.screen_lock_landscape), findsNothing);
       });
 
-      testWidgets('orientation lock button visible in fullscreen mode', (tester) async {
+      testWidgets('orientation lock button visible in fullscreen mode', (
+        tester,
+      ) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         // Simulate fullscreen state
-        eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pump();
 
         await tester.pumpWidget(
@@ -739,10 +902,14 @@ void main() {
 
       testWidgets('orientation lock button has tooltip', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         // Simulate fullscreen state
-        eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+        eventController.add(
+          const FullscreenStateChangedEvent(isFullscreen: true),
+        );
         await tester.pump();
 
         await tester.pumpWidget(
@@ -762,7 +929,9 @@ void main() {
         final lockButton = find.byIcon(Icons.screen_rotation);
         expect(lockButton, findsOneWidget);
 
-        final iconButton = tester.widget<IconButton>(find.ancestor(of: lockButton, matching: find.byType(IconButton)));
+        final iconButton = tester.widget<IconButton>(
+          find.ancestor(of: lockButton, matching: find.byType(IconButton)),
+        );
         expect(iconButton.tooltip, equals('Lock orientation'));
       });
     });
@@ -770,7 +939,9 @@ void main() {
     group('mouse hover on desktop', () {
       testWidgets('wraps controls with MouseRegion on web', (tester) async {
         final controller = ProVideoPlayerController();
-        await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+        await controller.initialize(
+          source: const VideoSource.network(TestMedia.networkUrl),
+        );
 
         await tester.pumpWidget(
           buildTestWidget(
@@ -805,10 +976,14 @@ void main() {
         (tester) async {
           var exitFullscreenCalled = false;
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
           // Simulate fullscreen state
-          eventController.add(const FullscreenStateChangedEvent(isFullscreen: true));
+          eventController.add(
+            const FullscreenStateChangedEvent(isFullscreen: true),
+          );
           await tester.pump();
 
           await tester.pumpWidget(
@@ -820,7 +995,9 @@ void main() {
                   forceMobileLayout: true,
                   controller: controller,
                   gestureConfig: const GestureConfig(enableGestures: false),
-                  fullscreenConfig: FullscreenConfig(onExitFullscreen: () => exitFullscreenCalled = true),
+                  fullscreenConfig: FullscreenConfig(
+                    onExitFullscreen: () => exitFullscreenCalled = true,
+                  ),
                 ),
               ),
             ),
@@ -841,7 +1018,11 @@ void main() {
 
       // Skip: Focus/tap with pumpAndSettle() causes hit test failures.
       // Keyboard shortcuts are verified via integration tests.
-      testWidgets('Escape key does nothing when not in fullscreen mode', (tester) async {}, skip: true);
+      testWidgets(
+        'Escape key does nothing when not in fullscreen mode',
+        (tester) async {},
+        skip: true,
+      );
 
       // Skip: Same focus/tap issue as Escape key test - pumpAndSettle() with tap causes hit test failures.
       // Keyboard shortcuts are verified via integration tests.
@@ -851,7 +1032,9 @@ void main() {
         (tester) async {
           var enterFullscreenCalled = false;
           final controller = ProVideoPlayerController();
-          await controller.initialize(source: const VideoSource.network(TestMedia.networkUrl));
+          await controller.initialize(
+            source: const VideoSource.network(TestMedia.networkUrl),
+          );
 
           await tester.pumpWidget(
             buildTestWidget(
@@ -862,7 +1045,9 @@ void main() {
                   forceMobileLayout: true,
                   controller: controller,
                   gestureConfig: const GestureConfig(enableGestures: false),
-                  fullscreenConfig: FullscreenConfig(onEnterFullscreen: () => enterFullscreenCalled = true),
+                  fullscreenConfig: FullscreenConfig(
+                    onEnterFullscreen: () => enterFullscreenCalled = true,
+                  ),
                 ),
               ),
             ),

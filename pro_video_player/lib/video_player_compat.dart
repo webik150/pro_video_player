@@ -52,15 +52,6 @@
 /// @docImport 'package:pro_video_player/pro_video_player.dart';
 library video_player_compat;
 
-import 'src/compat/closed_caption_file.dart' show SubRipCaptionFile, WebVTTCaptionFile;
-import 'src/compat/duration_range.dart' show DurationRange;
-import 'src/compat/enums.dart' show VideoFormat, VideoViewType;
-import 'src/compat/video_player_controller.dart' show VideoPlayerController;
-import 'src/compat/video_player_web_options.dart' show VideoPlayerWebOptions, VideoPlayerWebOptionsControls;
-import 'src/compat/widgets/closed_caption_widget.dart' show ClosedCaption;
-import 'src/compat/widgets/video_player_widget.dart' show VideoPlayer;
-import 'src/compat/widgets/video_progress_colors.dart' show VideoProgressColors;
-import 'src/compat/widgets/video_progress_indicator.dart' show VideoProgressIndicator, VideoScrubber;
 import 'video_player_compat.dart'
     show
         ClosedCaption,

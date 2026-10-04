@@ -1,2 +1,5 @@
 # Use shared analysis options from the root
+analyzer:
+  exclude:
+    - build/**
 include: ../analysis_options.yaml
